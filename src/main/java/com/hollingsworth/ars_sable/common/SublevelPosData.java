@@ -1,17 +1,23 @@
 package com.hollingsworth.ars_sable.common;
 
+import com.hollingsworth.arsnouveau.common.world.saved_data.DimMappingData;
 import com.hollingsworth.arsnouveau.common.world.saved_data.JarDimData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.UUIDUtil;
+import dev.ryanhcode.sable.companion.SableCompanion;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import net.minecraft.core.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.phys.Vec3;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -50,8 +56,47 @@ public class SublevelPosData extends SavedData {
         return PLAYER_TO_PLANARIUM_SUBLEVEL.get(id);
     }
 
-    public void removeSublevel(ServerLevel serverLevel, UUID sublevel) {
+    // Returns the pos transformed relative to the planarium in the real world, wherever the planarium may be now.
+    public @Nullable GlobalPos getTransformedPos(ServerLevel serverLevel, Player player){
+        var entry = getForPlayer(player.getUUID());
+        if(entry == null){
+            return null;
+        }
+        ServerLevel originalLevel = serverLevel.getServer().getLevel(entry.rotPos().pos().dimension());
+        JarDimData.RotPos enteredFrom = entry.rotPos();
 
+        BlockPos enteredFromOffset = enteredFrom.pos().pos();
+        return new GlobalPos(originalLevel.dimension(), tileOffsetPos(originalLevel, entry.localSublevelPos, enteredFromOffset));
+    }
+
+    protected BlockPos tileOffsetPos(Level originalLevel, BlockPos localSublevelPos, BlockPos offsetPos){
+        Vec3 realTilePos = SableCompanion.INSTANCE.projectOutOfSubLevel(originalLevel, (Position) localSublevelPos.getCenter());
+        return BlockPos.containing(realTilePos.add(Vec3.atLowerCornerOf(offsetPos)));
+    }
+
+    public void removeSublevel(ServerLevel serverLevel, UUID sublevel) {
+        var affectedPlayers = SUBLEVEL_TO_PLAYERS.get(sublevel);
+        if(affectedPlayers == null){
+            return;
+        }
+        for(UUID playerId : affectedPlayers){
+            var entry =  getForPlayer(playerId);
+            if(entry == null){
+                continue;
+            }
+            PLAYER_TO_PLANARIUM_SUBLEVEL.remove(playerId);
+            ServerLevel dimLevel = serverLevel.getServer().getLevel(entry.rotPos.pos().dimension());
+            if (dimLevel == null) {
+                return;
+            }
+            // Ensure we are not already in another jar dimension, preventing players from getting trapped between two jars
+            DimMappingData dimMappingData = DimMappingData.from(serverLevel);
+            JarDimData jarData = JarDimData.from(dimLevel);
+            if (dimMappingData.getByKey(serverLevel.dimension().location()) == null) {
+                jarData.setEnteredFrom(playerId, GlobalPos.of(serverLevel.dimension(), tileOffsetPos(serverLevel, entry.localSublevelPos, entry.rotPos.pos().pos())), entry.rotPos.rot());
+            }
+        }
+        SUBLEVEL_TO_PLAYERS.remove(sublevel);
     }
 
     public static SavedData.Factory<SublevelPosData> factory() {

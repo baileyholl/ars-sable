@@ -29,14 +29,11 @@ public class PlanariumHelpers {
         if(entry == null){
             return original.call(instance, uuid);
         }
-        ServerLevel originalLevel = serverLevel.getServer().getLevel(entry.rotPos().pos().dimension());
+        GlobalPos globalPos = sublevelPosData.getTransformedPos(serverLevel, player);
         JarDimData.RotPos enteredFrom = entry.rotPos();
-
-        Vec3 realTilePos = SableCompanion.INSTANCE.projectOutOfSubLevel(originalLevel, (Position) entry.localSublevelPos().getCenter());
-        BlockPos enteredFromOffset = enteredFrom.pos().pos();
-        BlockPos newPos = BlockPos.containing(realTilePos.add(Vec3.atLowerCornerOf(enteredFromOffset)));
-        return new JarDimData.RotPos(new GlobalPos(enteredFrom.pos().dimension(), newPos), enteredFrom.rot());
+        return new JarDimData.RotPos(globalPos, enteredFrom.rot());
     }
+
 
     public static void sendEntityTo(PlanariumTile tile, Entity entity, Operation<Void> original){
         if(!(tile.getLevel() instanceof ServerLevel serverLevel)){
