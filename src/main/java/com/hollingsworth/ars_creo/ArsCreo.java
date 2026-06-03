@@ -2,6 +2,7 @@ package com.hollingsworth.ars_creo;
 
 import com.hollingsworth.ars_creo.api.SourceInfo;
 import com.hollingsworth.ars_creo.common.PotionTank;
+import com.hollingsworth.ars_creo.common.SableSublevelObserver;
 import com.hollingsworth.ars_creo.common.registry.CreativeTabRegistry;
 import com.hollingsworth.ars_creo.common.registry.ModBlockRegistry;
 import com.hollingsworth.ars_creo.contraption.source.CreativeSourceJarInfo;
@@ -10,6 +11,12 @@ import com.hollingsworth.ars_creo.network.ACNetworking;
 import com.hollingsworth.arsnouveau.setup.registry.BlockRegistry;
 import com.simibubi.create.foundation.item.KineticStats;
 import com.simibubi.create.foundation.item.TooltipModifier;
+import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.api.sublevel.SubLevelObserver;
+import dev.ryanhcode.sable.companion.SableCompanion;
+import dev.ryanhcode.sable.neoforge.event.ForgeSableSubLevelContainerReadyEvent;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
@@ -34,6 +41,7 @@ public class ArsCreo {
         modBus.addListener(ArsCreo::registerEvents);
         modBus.addListener(ArsCreo::registerCapability);
         modBus.addListener(ArsCreo::commonSetup);
+        NeoForge.EVENT_BUS.addListener(ArsCreo::onSublevelReady);
         registers(modBus);
     }
 
@@ -43,6 +51,10 @@ public class ArsCreo {
         ModBlockRegistry.BLOCK_REG.register(event);
         ModBlockRegistry.BLOCK_ENTITY_REG.register(event);
         CreativeTabRegistry.TABS.register(event);
+    }
+
+    public static void onSublevelReady(ForgeSableSubLevelContainerReadyEvent ready){
+        ready.getContainer().addObserver(new SableSublevelObserver());
     }
 
     public static void registerEvents(RegisterEvent event) {

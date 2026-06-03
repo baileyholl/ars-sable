@@ -15,6 +15,18 @@ repositories {
             includeGroup "com.hollingsworth.ars_nouveau"
         }
     }
+    exclusiveContent { // Sable
+        forRepository {
+            maven {
+                url = "https://maven.ryanhcode.dev/releases"
+                name = "RyanHCode Maven"
+            }
+        }
+        filter {
+            includeGroup("dev.ryanhcode.sable")
+            includeGroup("dev.ryanhcode.sable-companion")
+        }
+    }
     maven {
         name = 'ParchmentMC'
         url = 'https://maven.parchmentmc.org'
@@ -95,10 +107,15 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
+        clientAlt {
+            client()
+            gameDirectory = project.file('runs/client')
+            programArguments.addAll('--username', 'Dev2')
+        }
+
         server {
             server()
-            programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            gameDirectory = project.file('server')
         }
 
         gameTestServer {
@@ -142,13 +159,17 @@ dependencies {
 
     implementation 'com.github.glitchfiend:TerraBlender-neoforge:1.21-4.0.0.0'
     implementation "top.theillusivec4.curios:curios-neoforge:${curios_version}+1.21.1"
-    implementation ("com.simibubi.create:create-1.21.1:6.0.9-215:slim"){transitive = false}
+    implementation ("com.simibubi.create:create-1.21.1:6.0.10-280:slim"){transitive = false}
 
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${flywheel_minecraft_version}:${flywheel_version}")
     runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${flywheel_minecraft_version}:${flywheel_version}")
     runtimeOnly("dev.engine-room.vanillin:vanillin-neoforge-${flywheel_minecraft_version}:${vanillin_version}")
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+    jarJar(implementation("dev.ryanhcode.sable:sable-neoforge-${project.minecraft_version}:${project.sable_version}")) {
+    }
+    // Create aeronautics
+    implementation "maven.modrinth:oWaK0Q19:YhZLrAFC"
 }
 
 jar {

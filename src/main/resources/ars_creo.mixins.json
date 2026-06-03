@@ -4,7 +4,9 @@
   "package": "com.hollingsworth.ars_creo.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "SourceUtilMixin"
+    "SourceUtilMixin",
+    "planarium.DimBoundaryMixin",
+    "planarium.PlanariumTileMixin"
   ],
   "client": [
     "GeoEntityRendererMixin"
