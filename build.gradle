@@ -125,7 +125,7 @@ neoForge {
 
         data {
             data()
-            programArguments.addAll("--all", "--mod", "ars_creo", "--existing-mod", "ars_nouveau", "--existing", file("src/main/resources").absolutePath, "--output", file("src/generated/resources").absolutePath)
+            programArguments.addAll("--all", "--mod", "ars_sable", "--existing-mod", "ars_nouveau", "--existing", file("src/main/resources").absolutePath, "--output", file("src/generated/resources").absolutePath)
         }
 
         configureEach {
@@ -182,7 +182,7 @@ jar {
                 "Implementation-Version": mod_version,
                 "Implementation-Vendor" :"baileyh",
                 "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                "MixinConfigs": "ars_creo.mixins.json"
+                "MixinConfigs": "ars_sable.mixins.json"
         ])
     }
 }
