@@ -1,5 +1,6 @@
 package com.hollingsworth.ars_sable.common;
 
+import com.hollingsworth.arsnouveau.common.util.ANCodecs;
 import com.hollingsworth.arsnouveau.common.world.saved_data.DimMappingData;
 import com.hollingsworth.arsnouveau.common.world.saved_data.JarDimData;
 import com.mojang.serialization.Codec;
@@ -104,7 +105,7 @@ public class SublevelPosData extends SavedData {
     }
 
     public static SublevelPosData load(CompoundTag tag, HolderLookup.Provider p) {
-        return CODEC.parse(NbtOps.INSTANCE, tag).resultOrPartial(e -> {}).orElseGet(SublevelPosData::new);
+        return ANCodecs.decode(CODEC, tag);
     }
 
     @Override

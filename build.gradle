@@ -170,6 +170,7 @@ dependencies {
     }
     // Create aeronautics
     implementation "maven.modrinth:oWaK0Q19:YhZLrAFC"
+    implementation "curse.maven:ars-creo-575698:8139067"
 }
 
 jar {

@@ -4,8 +4,12 @@
   "package": "com.hollingsworth.ars_sable.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "dominion_wand.DominionWandMixin",
+    "pathnavigate.AdvancedNavigateMixin",
     "planarium.DimBoundaryMixin",
-    "planarium.PlanariumTileMixin"
+    "planarium.PlanariumTileMixin",
+    "starbuncle.TravelToPosStateMixin",
+    "util.BlockPosUtilMixin"
   ],
   "client": [
   ],
