@@ -13,6 +13,4 @@ public class PlanariumTileMixin {
     public void sendEntityTo(Entity entity, Operation<Void> original){
         PlanariumHelpers.sendEntityTo((PlanariumTile) (Object)this, entity, original);
     }
-
-
 }

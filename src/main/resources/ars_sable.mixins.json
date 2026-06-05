@@ -8,8 +8,10 @@
     "pathnavigate.AdvancedNavigateMixin",
     "planarium.DimBoundaryMixin",
     "planarium.PlanariumTileMixin",
+    "source_jar.SourceJarMixin",
     "starbuncle.TravelToPosStateMixin",
-    "util.BlockPosUtilMixin"
+    "util.BlockPosUtilMixin",
+    "util.ParticleUtilMixin"
   ],
   "client": [
   ],
