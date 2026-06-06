@@ -9,8 +9,8 @@ import org.spongepowered.asm.mixin.Mixin;
 
 @Mixin(PlanariumTile.class)
 public class PlanariumTileMixin {
-    @WrapMethod(method="sendEntityTo")
-    public void sendEntityTo(Entity entity, Operation<Void> original){
-        PlanariumHelpers.sendEntityTo((PlanariumTile) (Object)this, entity, original);
+    @WrapMethod(method = "sendEntityTo")
+    public void sendEntityTo(Entity entity, Operation<Void> original) {
+        PlanariumHelpers.sendEntityTo((PlanariumTile) (Object) this, entity, original);
     }
 }

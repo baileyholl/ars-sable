@@ -3,12 +3,10 @@ package com.hollingsworth.ars_sable.common.sable;
 import com.hollingsworth.arsnouveau.api.source.ISourceTile;
 import com.hollingsworth.arsnouveau.api.source.ISpecialSourceProvider;
 import dev.ryanhcode.sable.Sable;
-import dev.ryanhcode.sable.api.command.SableCommandHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
-import java.util.UUID;
 import java.util.function.Supplier;
 
 public class SableSourceProvider implements ISpecialSourceProvider {
@@ -30,7 +28,7 @@ public class SableSourceProvider implements ISpecialSourceProvider {
 
     @Override
     public boolean isValid() {
-        if(tile instanceof BlockEntity blockEntity){
+        if (tile instanceof BlockEntity blockEntity) {
             return Sable.HELPER.getContaining(blockEntity) != null;
         }
         return false;

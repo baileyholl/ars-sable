@@ -4,6 +4,9 @@
   "package": "com.hollingsworth.ars_sable.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "camera.ICameraMountableMixin",
+    "camera.ScryerCameraMixin",
+    "camera.SubLevelTrackingSystemMixin",
     "pathnavigate.AdvancedNavigateMixin",
     "planarium.DimBoundaryMixin",
     "planarium.PlanariumTileMixin",
@@ -12,6 +15,7 @@
     "util.ParticleUtilMixin"
   ],
   "client": [
+    "camera.CameraControllerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
