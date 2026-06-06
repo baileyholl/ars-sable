@@ -60,7 +60,8 @@ repositories {
     maven { url "https://maven.creeperhost.net/" }
     maven { url = "https://maven.createmod.net" } // Create, Ponder, Flywheel
     maven { url = "https://maven.ithundxr.dev/snapshots" } // Registrate
-    maven { url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven" } // NeoForge config api port, needed by ponder
+    maven { url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven" }
+    // NeoForge config api port, needed by ponder
 
     exclusiveContent {
         forRepository {
@@ -105,6 +106,7 @@ neoForge {
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            programArguments.addAll("--width", "1280", "--height", "720")
         }
 
         clientAlt {
@@ -159,7 +161,7 @@ dependencies {
 
     implementation 'com.github.glitchfiend:TerraBlender-neoforge:1.21-4.0.0.0'
     implementation "top.theillusivec4.curios:curios-neoforge:${curios_version}+1.21.1"
-    implementation ("com.simibubi.create:create-1.21.1:6.0.10-280:slim"){transitive = false}
+    implementation("com.simibubi.create:create-1.21.1:6.0.10-280:slim") { transitive = false }
 
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${flywheel_minecraft_version}:${flywheel_version}")
     runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${flywheel_minecraft_version}:${flywheel_version}")
@@ -176,14 +178,14 @@ dependencies {
 jar {
     manifest {
         attributes([
-                "Specification-Title": "Ars Caelum",
-                "Specification-Vendor": "baileyh",
-                "Specification-Version": "1", // We are version 1 of ourselves
-                "Implementation-Title": project.name,
-                "Implementation-Version": mod_version,
-                "Implementation-Vendor" :"baileyh",
+                "Specification-Title"     : "Ars Caelum",
+                "Specification-Vendor"    : "baileyh",
+                "Specification-Version"   : "1", // We are version 1 of ourselves
+                "Implementation-Title"    : project.name,
+                "Implementation-Version"  : mod_version,
+                "Implementation-Vendor"   : "baileyh",
                 "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
-                "MixinConfigs": "ars_sable.mixins.json"
+                "MixinConfigs"            : "ars_sable.mixins.json"
         ])
     }
 }
