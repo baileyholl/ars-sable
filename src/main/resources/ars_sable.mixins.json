@@ -7,9 +7,12 @@
     "camera.ICameraMountableMixin",
     "camera.ScryerCameraMixin",
     "camera.SubLevelTrackingSystemMixin",
+    "entity.EntityFlyingItemMixin",
     "entity.BookwyrmSublevelTrackingMixin",
+    "entity.EntityFollowProjectileMixin",
     "entity.WhirlisprigSublevelTrackingMixin",
     "entity.WixieSublevelTrackingMixin",
+    "mob_jar.MobJarTileMixin",
     "pathnavigate.AdvancedNavigateMixin",
     "pathnavigate.BookwyrmRandomStorageVisitGoalMixin",
     "pathnavigate.BookwyrmTransferGoalMixin",
@@ -26,6 +29,7 @@
     "camera.CameraControllerMixin",
     "camera.ClientHandlerMixin",
     "render.ArcanePedestalRendererMixin",
+    "render.MobJarRendererMixin",
     "render.PlanariumRendererMixin"
   ],
   "injectors": {
