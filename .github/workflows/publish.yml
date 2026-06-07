@@ -48,11 +48,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: all-jar
-          path: build/libs/*-all.jar
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sources-jar
-          path: build/libs/*-sources.jar
+          path: build/libs/*.jar
       - uses: Kir-Antipov/mc-publish@v3.3
         if: ${{ github.ref_type == 'branch' && github.ref_name == 'main' }}
         with:
