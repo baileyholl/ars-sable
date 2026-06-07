@@ -8,6 +8,8 @@
     "camera.ScryerCameraMixin",
     "camera.SubLevelTrackingSystemMixin",
     "entity.BookwyrmSublevelTrackingMixin",
+    "entity.WhirlisprigSublevelTrackingMixin",
+    "entity.WixieSublevelTrackingMixin",
     "pathnavigate.AdvancedNavigateMixin",
     "pathnavigate.BookwyrmRandomStorageVisitGoalMixin",
     "pathnavigate.BookwyrmTransferGoalMixin",
