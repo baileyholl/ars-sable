@@ -11,10 +11,11 @@ import net.minecraft.core.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3d;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -83,8 +84,28 @@ public class SublevelPosData extends SavedData {
     }
 
     protected BlockPos tileOffsetPos(Level originalLevel, BlockPos localSublevelPos, BlockPos offsetPos) {
-        Vec3 realTilePos = SableCompanion.INSTANCE.projectOutOfSubLevel(originalLevel, (Position) localSublevelPos.getCenter());
-        return BlockPos.containing(realTilePos.add(Vec3.atLowerCornerOf(offsetPos)));
+        BlockPos localSpawnPos = localSublevelPos.offset(offsetPos);
+        Vector3d realSpawnPos = projectOut(originalLevel, localSpawnPos.getX() + 0.5D, localSpawnPos.getY(), localSpawnPos.getZ() + 0.5D);
+        int spawnY = Mth.ceil(maxProjectedTopY(originalLevel, localSpawnPos) - 1.0E-6D);
+        return new BlockPos(Mth.floor(realSpawnPos.x()), spawnY, Mth.floor(realSpawnPos.z()));
+    }
+
+    private double maxProjectedTopY(Level level, BlockPos localSpawnPos) {
+        double x = localSpawnPos.getX();
+        double y = localSpawnPos.getY();
+        double z = localSpawnPos.getZ();
+        return Math.max(
+                Math.max(projectedY(level, x, y, z), projectedY(level, x + 1.0D, y, z)),
+                Math.max(projectedY(level, x, y, z + 1.0D), projectedY(level, x + 1.0D, y, z + 1.0D))
+        );
+    }
+
+    private double projectedY(Level level, double x, double y, double z) {
+        return projectOut(level, x, y, z).y();
+    }
+
+    private Vector3d projectOut(Level level, double x, double y, double z) {
+        return SableCompanion.INSTANCE.projectOutOfSubLevel(level, new Vector3d(x, y, z), new Vector3d());
     }
 
     public void setSublevelLoaded(ServerLevel serverLevel, UUID sublevel, boolean isLoaded) {
