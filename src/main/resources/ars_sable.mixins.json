@@ -15,8 +15,10 @@
     "util.ParticleUtilMixin"
   ],
   "client": [
+    "camera.CameraControllerMixin",
     "camera.ClientHandlerMixin",
-    "camera.CameraControllerMixin"
+    "render.ArcanePedestalRendererMixin",
+    "render.PlanariumRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
