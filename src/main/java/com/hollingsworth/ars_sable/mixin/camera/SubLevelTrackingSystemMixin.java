@@ -20,7 +20,7 @@ public class SubLevelTrackingSystemMixin {
     private double ars_sable$trackFromScryerCamera(Vector3dc sublevelPosition, double x, double y, double z, Operation<Double> original, @Local(argsOnly = true) Player player) {
         if (player instanceof ServerPlayer serverPlayer) {
             Entity camera = serverPlayer.getCamera();
-            if (camera instanceof SublevelCamera) {
+            if (camera instanceof SublevelCamera sublevelCamera && sublevelCamera.ars_sable$isSublevelCamera()) {
                 return original.call(sublevelPosition, camera.getX(), camera.getY(), camera.getZ());
             }
         }

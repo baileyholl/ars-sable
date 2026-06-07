@@ -17,6 +17,9 @@ public interface ICameraMountableMixin {
     // Force-load the projected real-world chunks the camera will render, not the extreme sublevel ones.
     @WrapOperation(method = "mountCamera", at = @At(value = "INVOKE", target = "Lnet/minecraft/core/SectionPos;of(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/core/SectionPos;"))
     private SectionPos ars_sable$projectChunkCenter(BlockPos pos, Operation<SectionPos> original, @Local(argsOnly = true) Level level) {
+        if (!ScryerHelpers.isInSublevel(level, pos)) {
+            return original.call(pos);
+        }
         return original.call(ScryerHelpers.projectChunkCenter(level, pos));
     }
 }

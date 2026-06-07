@@ -26,7 +26,7 @@ public class CameraControllerMixin {
     @Inject(method = "onClientTick(Lnet/neoforged/neoforge/client/event/ClientTickEvent$Post;)V", at = @At("TAIL"))
     private static void ars_sable$followRenderPosition(ClientTickEvent.Post event, CallbackInfo ci) {
         Entity cameraEntity = Minecraft.getInstance().cameraEntity;
-        if (cameraEntity instanceof SublevelCamera) {
+        if (cameraEntity instanceof SublevelCamera sublevelCamera && sublevelCamera.ars_sable$isSublevelCamera()) {
             CameraController.setRenderPosition(cameraEntity);
         }
     }
@@ -35,6 +35,9 @@ public class CameraControllerMixin {
     private static BlockState ars_sable$facingFromSync(Level level, BlockPos pos, Operation<BlockState> original, @Local(argsOnly = true) ScryerCamera cam) {
         BlockState state = original.call(level, pos);
         if (!state.hasProperty(ScryerCrystal.FACING) && cam instanceof SublevelCamera sublevelCamera) {
+            if (!sublevelCamera.ars_sable$isSublevelCamera()) {
+                return state;
+            }
             Direction facing = sublevelCamera.ars_sable$getFacing();
             if (facing == null) {
                 return state;

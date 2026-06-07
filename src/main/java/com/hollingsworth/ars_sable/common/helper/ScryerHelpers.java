@@ -34,6 +34,10 @@ public class ScryerHelpers {
         return true;
     }
 
+    public static boolean isInSublevel(Level level, BlockPos pos) {
+        return Sable.HELPER.getContaining(level, pos.getCenter()) != null;
+    }
+
     public static BlockPos projectChunkCenter(Level level, BlockPos pos) {
         SubLevel subLevel = Sable.HELPER.getContaining(level, pos.getCenter());
         if (subLevel == null) {
@@ -116,10 +120,10 @@ public class ScryerHelpers {
             if (facing == Direction.DOWN) {
                 localPos = localPos.add(0.0, 0.25, 0.0);
             }
-            return new MountedCrystal(pos.immutable(), facing, localPos);
+            return new MountedCrystal(pos.immutable(), facing, localPos, candidateSublevel != null);
         });
     }
 
-    public record MountedCrystal(BlockPos pos, Direction facing, Vec3 localPos) {
+    public record MountedCrystal(BlockPos pos, Direction facing, Vec3 localPos, boolean inSublevel) {
     }
 }

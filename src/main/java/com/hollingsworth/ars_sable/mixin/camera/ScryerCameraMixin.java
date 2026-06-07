@@ -46,7 +46,7 @@ public class ScryerCameraMixin implements SublevelCamera {
         }
         if (self.level().isClientSide()) {
             ScryerHelpers.MountedCrystal crystal = ScryerHelpers.findMountedCrystal(self);
-            if (crystal != null) {
+            if (crystal != null && crystal.inSublevel()) {
                 ScryerHelpers.clientTickFollow(self, crystal.localPos());
             }
         } else if (ars_sable$localPos != null) {
@@ -57,7 +57,7 @@ public class ScryerCameraMixin implements SublevelCamera {
     // Validate the self-discard check against the mounted crystal, not the empty projected position.
     @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;"))
     private BlockState ars_sable$anchorTickLookup(Level level, BlockPos pos, Operation<BlockState> original) {
-        ScryerHelpers.MountedCrystal crystal = ars_sable$mountedCrystal();
+        ScryerHelpers.MountedCrystal crystal = ars_sable$mountedSublevelCrystal();
         if (crystal != null) {
             return original.call(level, crystal.pos());
         }
@@ -68,7 +68,7 @@ public class ScryerCameraMixin implements SublevelCamera {
     // Only the block-entity lookup is redirected; the chunk unload stays on the projected blockPosition().
     @WrapOperation(method = "discardCamera", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;getBlockEntity(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/entity/BlockEntity;"))
     private net.minecraft.world.level.block.entity.BlockEntity ars_sable$anchorDiscardLookup(Level level, BlockPos pos, Operation<net.minecraft.world.level.block.entity.BlockEntity> original) {
-        ScryerHelpers.MountedCrystal crystal = ars_sable$mountedCrystal();
+        ScryerHelpers.MountedCrystal crystal = ars_sable$mountedSublevelCrystal();
         if (crystal != null) {
             return original.call(level, crystal.pos());
         }
@@ -77,7 +77,7 @@ public class ScryerCameraMixin implements SublevelCamera {
 
     @Inject(method = "isCameraDown", at = @At("RETURN"), cancellable = true)
     private void ars_sable$downFromFacing(CallbackInfoReturnable<Boolean> cir) {
-        if (ars_sable$getFacing() == Direction.DOWN) {
+        if (ars_sable$isSublevelCamera() && ars_sable$getFacing() == Direction.DOWN) {
             cir.setReturnValue(true);
         }
     }
@@ -85,13 +85,18 @@ public class ScryerCameraMixin implements SublevelCamera {
     @Override
     @Nullable
     public Direction ars_sable$getFacing() {
-        ScryerHelpers.MountedCrystal crystal = ars_sable$mountedCrystal();
+        ScryerHelpers.MountedCrystal crystal = ars_sable$mountedSublevelCrystal();
         return crystal != null ? crystal.facing() : null;
+    }
+
+    @Override
+    public boolean ars_sable$isSublevelCamera() {
+        return ars_sable$mountedSublevelCrystal() != null;
     }
 
     @Unique
     @Nullable
-    private ScryerHelpers.MountedCrystal ars_sable$mountedCrystal() {
+    private ScryerHelpers.MountedCrystal ars_sable$mountedSublevelCrystal() {
         ScryerCamera self = (ScryerCamera) (Object) this;
         if (!self.level().isClientSide() && ars_sable$localPos != null) {
             ScryerHelpers.MountedCrystal crystal = ScryerHelpers.findMountedCrystal(self.level(), ars_sable$localPos);
@@ -99,6 +104,7 @@ public class ScryerCameraMixin implements SublevelCamera {
                 return crystal;
             }
         }
-        return ScryerHelpers.findMountedCrystal(self);
+        ScryerHelpers.MountedCrystal crystal = ScryerHelpers.findMountedCrystal(self);
+        return crystal != null && crystal.inSublevel() ? crystal : null;
     }
 }
