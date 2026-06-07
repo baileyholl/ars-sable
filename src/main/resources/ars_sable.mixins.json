@@ -15,6 +15,7 @@
     "util.ParticleUtilMixin"
   ],
   "client": [
+    "camera.ClientHandlerMixin",
     "camera.CameraControllerMixin"
   ],
   "injectors": {
