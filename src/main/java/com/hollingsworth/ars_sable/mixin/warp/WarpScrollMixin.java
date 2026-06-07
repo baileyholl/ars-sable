@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -16,6 +17,11 @@ import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 @Mixin(WarpScroll.class)
 public class WarpScrollMixin {
+    @WrapOperation(method = "onEntityItemUpdate", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/item/ItemEntity;blockPosition()Lnet/minecraft/core/BlockPos;"))
+    private BlockPos ars_sable$useStoragePositionForPortal(ItemEntity entity, Operation<BlockPos> original) {
+        return WarpSableHelper.storageBlockPosition(entity, original.call(entity));
+    }
+
     @WrapOperation(method = "use", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;blockPosition()Lnet/minecraft/core/BlockPos;"))
     private BlockPos ars_sable$bindSublevelPosition(Player player, Operation<BlockPos> original) {
         return WarpSableHelper.bindPosition(player, original.call(player));

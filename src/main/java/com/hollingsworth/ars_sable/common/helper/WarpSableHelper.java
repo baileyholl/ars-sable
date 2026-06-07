@@ -3,9 +3,11 @@ package com.hollingsworth.ars_sable.common.helper;
 import com.hollingsworth.ars_sable.common.WarpSublevelTargetData;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
+import dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.EntityMovementExtension;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -55,6 +57,17 @@ public class WarpSableHelper {
                 GlobalPos.of(serverLevel.dimension(), BlockPos.containing(fallbackPos))
         );
         return localPos;
+    }
+
+    public static BlockPos storageBlockPosition(Entity entity, BlockPos original) {
+        if (entity instanceof EntityMovementExtension movementExtension) {
+            entity.getInBlockState();
+            BlockPos pos = movementExtension.sable$getInBlockStatePos();
+            if (SableCompanion.INSTANCE.getContaining(entity.level(), pos) != null) {
+                return pos;
+            }
+        }
+        return original;
     }
 
     private static double adjustedY(Level level, BlockPos localSpawnPos) {
