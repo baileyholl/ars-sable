@@ -7,12 +7,10 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.ryanhcode.sable.companion.SableCompanion;
-import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -49,40 +47,78 @@ public class SublevelPosData extends SavedData {
     }));
 
     public void put(UUID playerId, UUID sublevelId, BlockPos plotPos, JarDimData.RotPos rotPos) {
-        PLAYER_TO_PLANARIUM_SUBLEVEL.put(playerId, new Entry(sublevelId, plotPos, rotPos));
+        Entry oldEntry = PLAYER_TO_PLANARIUM_SUBLEVEL.get(playerId);
+        if (oldEntry != null && !oldEntry.sublevelId().equals(sublevelId)) {
+            removePlayer(playerId);
+        }
+        PLAYER_TO_PLANARIUM_SUBLEVEL.put(playerId, new Entry(sublevelId, plotPos, rotPos, true, Optional.empty()));
         SUBLEVEL_TO_PLAYERS.computeIfAbsent(sublevelId, k -> new HashSet<>()).add(playerId);
     }
 
-    public Entry getForPlayer(UUID id){
+    public Entry getForPlayer(UUID id) {
         return PLAYER_TO_PLANARIUM_SUBLEVEL.get(id);
     }
 
     // Returns the pos transformed relative to the planarium in the real world, wherever the planarium may be now.
-    public @Nullable GlobalPos getTransformedPos(ServerLevel serverLevel, Player player){
+    public @Nullable GlobalPos getTransformedPos(ServerLevel serverLevel, Player player) {
         var entry = getForPlayer(player.getUUID());
-        if(entry == null){
+        if (entry == null) {
             return null;
         }
+        if (!entry.isLoaded()) {
+            return entry.unloadedPos().orElse(null);
+        }
+        return getTransformedPos(serverLevel, entry);
+    }
+
+    private @Nullable GlobalPos getTransformedPos(ServerLevel serverLevel, Entry entry) {
         ServerLevel originalLevel = serverLevel.getServer().getLevel(entry.rotPos().pos().dimension());
+        if (originalLevel == null) {
+            return null;
+        }
         JarDimData.RotPos enteredFrom = entry.rotPos();
 
         BlockPos enteredFromOffset = enteredFrom.pos().pos();
         return new GlobalPos(originalLevel.dimension(), tileOffsetPos(originalLevel, entry.localSublevelPos, enteredFromOffset));
     }
 
-    protected BlockPos tileOffsetPos(Level originalLevel, BlockPos localSublevelPos, BlockPos offsetPos){
+    protected BlockPos tileOffsetPos(Level originalLevel, BlockPos localSublevelPos, BlockPos offsetPos) {
         Vec3 realTilePos = SableCompanion.INSTANCE.projectOutOfSubLevel(originalLevel, (Position) localSublevelPos.getCenter());
         return BlockPos.containing(realTilePos.add(Vec3.atLowerCornerOf(offsetPos)));
     }
 
-    public void removeSublevel(ServerLevel serverLevel, UUID sublevel) {
+    public void setSublevelLoaded(ServerLevel serverLevel, UUID sublevel, boolean isLoaded) {
         var affectedPlayers = SUBLEVEL_TO_PLAYERS.get(sublevel);
-        if(affectedPlayers == null){
+        if (affectedPlayers == null) {
             return;
         }
-        for(UUID playerId : affectedPlayers){
-            var entry =  getForPlayer(playerId);
-            if(entry == null){
+        for (UUID playerId : affectedPlayers) {
+            var entry = getForPlayer(playerId);
+            if (entry == null || !entry.sublevelId().equals(sublevel)) {
+                continue;
+            }
+            Optional<GlobalPos> unloadedPos = isLoaded ? Optional.empty() : entry.unloadedPos();
+            if (!isLoaded) {
+                GlobalPos transformedPos = getTransformedPos(serverLevel, entry);
+                if (transformedPos != null) {
+                    unloadedPos = Optional.of(transformedPos);
+                }
+            }
+            PLAYER_TO_PLANARIUM_SUBLEVEL.put(playerId, entry.withLoaded(isLoaded, unloadedPos));
+        }
+    }
+
+    public void removeSublevel(ServerLevel serverLevel, UUID sublevel) {
+        var affectedPlayers = SUBLEVEL_TO_PLAYERS.get(sublevel);
+        if (affectedPlayers == null) {
+            return;
+        }
+        for (UUID playerId : affectedPlayers) {
+            var entry = getForPlayer(playerId);
+            if (entry == null) {
+                continue;
+            }
+            if (!entry.sublevelId().equals(sublevel)) {
                 continue;
             }
             PLAYER_TO_PLANARIUM_SUBLEVEL.remove(playerId);
@@ -94,10 +130,27 @@ public class SublevelPosData extends SavedData {
             DimMappingData dimMappingData = DimMappingData.from(serverLevel);
             JarDimData jarData = JarDimData.from(dimLevel);
             if (dimMappingData.getByKey(serverLevel.dimension().location()) == null) {
-                jarData.setEnteredFrom(playerId, GlobalPos.of(serverLevel.dimension(), tileOffsetPos(serverLevel, entry.localSublevelPos, entry.rotPos.pos().pos())), entry.rotPos.rot());
+                GlobalPos transformedPos = entry.isLoaded() ? GlobalPos.of(serverLevel.dimension(), tileOffsetPos(serverLevel, entry.localSublevelPos, entry.rotPos.pos().pos())) : entry.unloadedPos().orElse(null);
+                if (transformedPos != null) {
+                    jarData.setEnteredFrom(playerId, transformedPos, entry.rotPos.rot());
+                }
             }
         }
         SUBLEVEL_TO_PLAYERS.remove(sublevel);
+    }
+
+    public void removePlayer(UUID playerId) {
+        var entry = getForPlayer(playerId);
+        if (entry != null) {
+            PLAYER_TO_PLANARIUM_SUBLEVEL.remove(playerId);
+            var playersInSublevel = SUBLEVEL_TO_PLAYERS.get(entry.sublevelId());
+            if (playersInSublevel != null) {
+                playersInSublevel.remove(playerId);
+                if (playersInSublevel.isEmpty()) {
+                    SUBLEVEL_TO_PLAYERS.remove(entry.sublevelId());
+                }
+            }
+        }
     }
 
     public static SavedData.Factory<SublevelPosData> factory() {
@@ -140,11 +193,17 @@ public class SublevelPosData extends SavedData {
         ).apply(instance, SublevelEntry::new));
     }
 
-    public record Entry(UUID sublevelId, BlockPos localSublevelPos, JarDimData.RotPos rotPos) {
+    public record Entry(UUID sublevelId, BlockPos localSublevelPos, JarDimData.RotPos rotPos, boolean isLoaded, Optional<GlobalPos> unloadedPos) {
         public static final MapCodec<Entry> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
                 UUIDUtil.CODEC.fieldOf("sublevelId").forGetter(Entry::sublevelId),
                 BlockPos.CODEC.fieldOf("localSublevelPos").forGetter(Entry::localSublevelPos),
-                JarDimData.RotPos.CODEC.fieldOf("rotPos").forGetter(Entry::rotPos)
+                JarDimData.RotPos.CODEC.fieldOf("rotPos").forGetter(Entry::rotPos),
+                Codec.BOOL.optionalFieldOf("isLoaded", true).forGetter(Entry::isLoaded),
+                GlobalPos.CODEC.optionalFieldOf("unloadedPos").forGetter(Entry::unloadedPos)
         ).apply(instance, Entry::new));
+
+        public Entry withLoaded(boolean isLoaded, Optional<GlobalPos> unloadedPos) {
+            return new Entry(sublevelId, localSublevelPos, rotPos, isLoaded, unloadedPos);
+        }
     }
 }

@@ -9,16 +9,20 @@ public class SableSublevelObserver implements SubLevelObserver {
     @Override
     public void onSubLevelAdded(SubLevel subLevel) {
         SubLevelObserver.super.onSubLevelAdded(subLevel);
+        if (subLevel.getLevel() instanceof ServerLevel serverLevel) {
+            SublevelPosData.from(serverLevel).setSublevelLoaded(serverLevel, subLevel.getUniqueId(), true);
+        }
     }
 
     @Override
     public void onSubLevelRemoved(SubLevel subLevel, SubLevelRemovalReason reason) {
         SubLevelObserver.super.onSubLevelRemoved(subLevel, reason);
-        if(subLevel.getLevel() instanceof ServerLevel serverLevel) {
+        if (subLevel.getLevel() instanceof ServerLevel serverLevel) {
             if (reason == SubLevelRemovalReason.REMOVED) {
                 SublevelPosData.from(serverLevel).removeSublevel(serverLevel, subLevel.getUniqueId());
+            } else if (reason == SubLevelRemovalReason.UNLOADED) {
+                SublevelPosData.from(serverLevel).setSublevelLoaded(serverLevel, subLevel.getUniqueId(), false);
             }
         }
     }
-
 }
