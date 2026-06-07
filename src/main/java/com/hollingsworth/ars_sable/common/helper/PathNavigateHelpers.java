@@ -20,4 +20,12 @@ public class PathNavigateHelpers {
         BlockPos transformed = BlockPos.containing(sablePos);
         return original.call(transformed, speedFactor);
     }
+
+    public static Vec3 projectTarget(Level level, double x, double y, double z) {
+        Vec3 target = new Vec3(x, y, z);
+        if (Sable.HELPER.getContaining(level, target) == null) {
+            return target;
+        }
+        return Sable.HELPER.projectOutOfSubLevel(level, target);
+    }
 }
