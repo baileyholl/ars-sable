@@ -12,7 +12,10 @@
     "planarium.PlanariumTileMixin",
     "source_jar.SourceJarMixin",
     "util.BlockPosUtilMixin",
-    "util.ParticleUtilMixin"
+    "util.ParticleUtilMixin",
+    "warp.PortalTileMixin",
+    "warp.StableWarpScrollMixin",
+    "warp.WarpScrollMixin"
   ],
   "client": [
     "camera.CameraControllerMixin",
