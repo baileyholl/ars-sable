@@ -13,6 +13,7 @@
     "entity.WhirlisprigSublevelTrackingMixin",
     "entity.WixieSublevelTrackingMixin",
     "mob_jar.MobJarTileMixin",
+    "pathnavigate.AbstractPathJobMixin",
     "pathnavigate.AdvancedNavigateMixin",
     "pathnavigate.BookwyrmRandomStorageVisitGoalMixin",
     "pathnavigate.BookwyrmTransferGoalMixin",
