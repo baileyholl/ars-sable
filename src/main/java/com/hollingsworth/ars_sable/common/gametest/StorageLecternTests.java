@@ -48,6 +48,95 @@ public class StorageLecternTests {
     }
 
     @GameTest(template = TEMPLATE_EMPTY)
+    public static void movedHandlerPositionUpdatesMultipleLecterns(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos ownerAPos = new BlockPos(2, 1, 2);
+        BlockPos ownerBPos = new BlockPos(2, 1, 4);
+        BlockPos oldTarget = new BlockPos(4, 1, 3);
+        BlockPos newTarget = new BlockPos(5, 1, 3);
+        BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
+        BlockPos newTargetWorld = helper.absolutePos(newTarget);
+
+        StorageLecternTile ownerA = placeLectern(helper, ownerAPos);
+        StorageLecternTile ownerB = placeLectern(helper, ownerBPos);
+        helper.setBlock(oldTarget, Blocks.CHEST);
+        ownerA.addHandlerPos(ownerA, oldTargetWorld);
+        ownerB.addHandlerPos(ownerB, oldTargetWorld);
+
+        SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
+
+        helper.assertTrue(ownerA.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "First lectern did not move shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Second lectern did not move shared target");
+        helper.assertTrue(ownerA.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "First lectern kept stale shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Second lectern kept stale shared target");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE_EMPTY)
+    public static void wipedSharedConnectionKeepsOtherLecternTracking(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos ownerAPos = new BlockPos(2, 1, 2);
+        BlockPos ownerBPos = new BlockPos(2, 1, 4);
+        BlockPos oldTarget = new BlockPos(4, 1, 3);
+        BlockPos newTarget = new BlockPos(5, 1, 3);
+        BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
+        BlockPos newTargetWorld = helper.absolutePos(newTarget);
+
+        StorageLecternTile ownerA = placeLectern(helper, ownerAPos);
+        StorageLecternTile ownerB = placeLectern(helper, ownerBPos);
+        helper.setBlock(oldTarget, Blocks.CHEST);
+        ownerA.addHandlerPos(ownerA, oldTargetWorld);
+        ownerB.addHandlerPos(ownerB, oldTargetWorld);
+
+        TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
+        TrackedWorldPositionBlockEntity trackedA = (TrackedWorldPositionBlockEntity) ownerA;
+        TrackedWorldPositionBlockEntity trackedB = (TrackedWorldPositionBlockEntity) ownerB;
+
+        ownerA.onFinishedConnectionLast(oldTargetWorld, Direction.UP, null, ANFakePlayer.getPlayer(level));
+        helper.assertTrue(data.getEntry(trackedA.ars_sable$getTrackingId()) == null, "Wiped lectern kept tracked entry");
+        helper.assertTrue(data.getTrackedPositions(trackedB.ars_sable$getTrackingId()).contains(oldTargetWorld), "Other lectern lost shared target tracking");
+
+        SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
+
+        helper.assertTrue(ownerA.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Wiped lectern tracked moved shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Other lectern did not move shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Other lectern kept stale shared target");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE_EMPTY)
+    public static void brokenSharedLecternKeepsOtherLecternTracking(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos ownerAPos = new BlockPos(2, 1, 2);
+        BlockPos ownerBPos = new BlockPos(2, 1, 4);
+        BlockPos oldTarget = new BlockPos(4, 1, 3);
+        BlockPos newTarget = new BlockPos(5, 1, 3);
+        BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
+        BlockPos newTargetWorld = helper.absolutePos(newTarget);
+
+        StorageLecternTile ownerA = placeLectern(helper, ownerAPos);
+        StorageLecternTile ownerB = placeLectern(helper, ownerBPos);
+        helper.setBlock(oldTarget, Blocks.CHEST);
+        ownerA.addHandlerPos(ownerA, oldTargetWorld);
+        ownerB.addHandlerPos(ownerB, oldTargetWorld);
+
+        TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
+        TrackedWorldPositionBlockEntity trackedA = (TrackedWorldPositionBlockEntity) ownerA;
+        TrackedWorldPositionBlockEntity trackedB = (TrackedWorldPositionBlockEntity) ownerB;
+
+        helper.setBlock(ownerAPos, Blocks.AIR);
+        helper.assertTrue(data.getEntry(trackedA.ars_sable$getTrackingId()) == null, "Broken lectern kept tracked entry");
+        helper.assertTrue(data.getTrackedPositions(trackedA.ars_sable$getTrackingId()).isEmpty(), "Broken lectern kept tracked positions");
+        helper.assertTrue(data.getTrackedPositions(trackedB.ars_sable$getTrackingId()).contains(oldTargetWorld), "Other lectern lost shared target tracking");
+
+        SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
+
+        helper.assertTrue(ownerB.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Other lectern did not move shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Other lectern kept stale shared target");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE_EMPTY)
     public static void brokenLecternRemovesTrackedPositions(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos ownerPos = new BlockPos(2, 1, 7);

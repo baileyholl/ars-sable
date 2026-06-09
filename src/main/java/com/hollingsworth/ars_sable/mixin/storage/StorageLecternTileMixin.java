@@ -77,7 +77,7 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
     @Inject(method = "addHandlerPos", at = @At("TAIL"))
     private void ars_sable$syncAddedHandler(StorageLecternTile tile, BlockPos pos, CallbackInfo ci) {
         if (tile instanceof TrackedWorldPositionBlockEntity trackedBlockEntity && tile.getLevel() instanceof ServerLevel serverLevel) {
-            TrackedBlockEntityPosData.from(serverLevel).sync(trackedBlockEntity.ars_sable$getTrackingId(), tile.getBlockPos(), trackedBlockEntity.ars_sable$getTrackedPositions());
+            ars_sable$syncTrackedBlockEntityPositions(serverLevel, trackedBlockEntity, tile.getBlockPos());
         }
     }
 
@@ -173,13 +173,18 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
     @Unique
     private void ars_sable$syncTrackedPositions() {
         if (this.getLevel() instanceof ServerLevel serverLevel) {
-            Collection<BlockPos> trackedPositions = ars_sable$getTrackedPositions();
-            TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(serverLevel);
-            if (trackedPositions.isEmpty()) {
-                data.removeIfAtPosition(ars_sable$trackingId, this.getBlockPos());
-                return;
-            }
-            data.sync(ars_sable$trackingId, this.getBlockPos(), trackedPositions);
+            ars_sable$syncTrackedBlockEntityPositions(serverLevel, this, this.getBlockPos());
+        }
+    }
+
+    @Unique
+    private static void ars_sable$syncTrackedBlockEntityPositions(ServerLevel serverLevel, TrackedWorldPositionBlockEntity trackedBlockEntity, BlockPos blockEntityPos) {
+        Collection<BlockPos> trackedPositions = trackedBlockEntity.ars_sable$getTrackedPositions();
+        TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(serverLevel);
+        if (trackedPositions.isEmpty()) {
+            data.removeIfAtPosition(trackedBlockEntity.ars_sable$getTrackingId(), blockEntityPos);
+        } else {
+            data.sync(trackedBlockEntity.ars_sable$getTrackingId(), blockEntityPos, trackedPositions);
         }
     }
 }

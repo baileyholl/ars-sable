@@ -96,7 +96,11 @@ public class TrackedBlockEntityPosData extends SavedData {
             trackedPositionToEntries.computeIfAbsent(newPos, key -> new HashSet<>()).add(id);
         }
 
-        this.trackedPositions.put(id, newPositions);
+        if (newPositions.isEmpty()) {
+            this.trackedPositions.remove(id);
+        } else {
+            this.trackedPositions.put(id, newPositions);
+        }
     }
 
     public @Nullable Entry getEntry(UUID id) {
@@ -161,10 +165,9 @@ public class TrackedBlockEntityPosData extends SavedData {
 
         for (UUID affectedId : List.copyOf(affectedIds)) {
             HashSet<BlockPos> positions = trackedPositions.get(affectedId);
-            if (positions == null) {
+            if (positions == null || !positions.remove(oldPos)) {
                 continue;
             }
-            positions.remove(oldPos);
             positions.add(newPos.immutable());
             trackedPositionToEntries.computeIfAbsent(newPos.immutable(), key -> new HashSet<>()).add(affectedId);
 
