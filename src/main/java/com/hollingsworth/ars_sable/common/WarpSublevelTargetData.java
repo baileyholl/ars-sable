@@ -1,30 +1,96 @@
 package com.hollingsworth.ars_sable.common;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 public class WarpSublevelTargetData extends SavedData {
-    private final Map<Key, GlobalPos> fallbackTargets = new HashMap<>();
+    // Bound sublevel target -> current target, fallback target, and warp placement mode.
+    private final Map<GlobalPos, Target> targets = new HashMap<>();
+    // Current block target -> bound sublevel targets that should update when that block moves.
+    private final Map<GlobalPos, HashSet<GlobalPos>> targetToKeys = new HashMap<>();
 
-    public void put(String targetDimension, BlockPos localPos, GlobalPos fallbackPos) {
-        fallbackTargets.put(new Key(targetDimension, localPos), fallbackPos);
+    private static final Codec<Map.Entry<GlobalPos, Target>> TARGET_MAPPING_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            GlobalPos.CODEC.fieldOf("key").forGetter(Map.Entry::getKey),
+            Target.CODEC.fieldOf("target").forGetter(Map.Entry::getValue)
+    ).apply(instance, Map::entry));
+
+    public void put(GlobalPos key, GlobalPos fallbackPos) {
+        put(key, fallbackPos, fallbackPos);
+    }
+
+    public void put(GlobalPos key, GlobalPos currentPos, GlobalPos fallbackPos) {
+        put(key, currentPos, fallbackPos, false);
+    }
+
+    public void put(GlobalPos key, GlobalPos currentPos, GlobalPos fallbackPos, boolean placeAbove) {
+        Target target = new Target(currentPos, fallbackPos, placeAbove);
+        Target oldTarget = targets.put(key, target);
+        if (oldTarget != null) {
+            removeTargetIndex(oldTarget.pos(), key);
+        }
+        targetToKeys.computeIfAbsent(target.pos(), ignored -> new HashSet<>()).add(key);
         setDirty();
     }
 
-    public @Nullable GlobalPos get(String targetDimension, BlockPos localPos) {
-        return fallbackTargets.get(new Key(targetDimension, localPos));
+    public @Nullable Target get(GlobalPos key) {
+        return targets.get(key);
+    }
+
+    public void handleBlockMoved(ServerLevel level, BlockPos oldPos, BlockPos newPos) {
+        if (moveCurrentTarget(level, oldPos, newPos)) {
+            setDirty();
+        }
+    }
+
+    private boolean moveCurrentTarget(ServerLevel level, BlockPos oldPos, BlockPos newPos) {
+        GlobalPos oldTarget = GlobalPos.of(level.dimension(), oldPos);
+        HashSet<GlobalPos> keys = targetToKeys.remove(oldTarget);
+        if (keys == null || keys.isEmpty()) {
+            return false;
+        }
+
+        boolean changed = false;
+        GlobalPos newTarget = GlobalPos.of(level.dimension(), newPos.immutable());
+        for (GlobalPos key : keys) {
+            Target currentTarget = targets.get(key);
+            if (currentTarget == null || !oldTarget.equals(currentTarget.pos())) {
+                targetToKeys.computeIfAbsent(oldTarget, ignored -> new HashSet<>()).add(key);
+                continue;
+            }
+            targets.put(key, new Target(newTarget, currentTarget.fallback(), currentTarget.placeAbove()));
+            targetToKeys.computeIfAbsent(newTarget, ignored -> new HashSet<>()).add(key);
+            changed = true;
+        }
+        return changed;
+    }
+
+    private void removeTargetIndex(GlobalPos target, GlobalPos key) {
+        HashSet<GlobalPos> keys = targetToKeys.get(target);
+        if (keys == null) {
+            return;
+        }
+        keys.remove(key);
+        if (keys.isEmpty()) {
+            targetToKeys.remove(target);
+        }
+    }
+
+    private void rebuildIndexes() {
+        targetToKeys.clear();
+        targets.forEach((key, target) -> targetToKeys.computeIfAbsent(target.pos(), ignored -> new HashSet<>()).add(key));
     }
 
     public static WarpSublevelTargetData from(ServerLevel level) {
@@ -38,44 +104,30 @@ public class WarpSublevelTargetData extends SavedData {
 
     public static WarpSublevelTargetData load(CompoundTag tag, net.minecraft.core.HolderLookup.Provider provider) {
         WarpSublevelTargetData data = new WarpSublevelTargetData();
-        ListTag targets = tag.getList("targets", Tag.TAG_COMPOUND);
-        for (Tag value : targets) {
-            CompoundTag entry = (CompoundTag) value;
-            ResourceLocation fallbackDimension = ResourceLocation.tryParse(entry.getString("fallbackDimension"));
-            if (fallbackDimension == null) {
-                continue;
-            }
-            GlobalPos fallbackPos = GlobalPos.of(
-                    ResourceKey.create(Registries.DIMENSION, fallbackDimension),
-                    new BlockPos(entry.getInt("fallbackX"), entry.getInt("fallbackY"), entry.getInt("fallbackZ"))
-            );
-            data.fallbackTargets.put(new Key(
-                    entry.getString("targetDimension"),
-                    new BlockPos(entry.getInt("localX"), entry.getInt("localY"), entry.getInt("localZ"))
-            ), fallbackPos);
+        ListTag targetList = tag.getList("targets", Tag.TAG_COMPOUND);
+        for (Tag value : targetList) {
+            TARGET_MAPPING_CODEC.parse(NbtOps.INSTANCE, value).result().ifPresent(mapping -> {
+                GlobalPos key = mapping.getKey();
+                data.targets.put(key, mapping.getValue());
+            });
         }
+        data.rebuildIndexes();
         return data;
     }
 
     @Override
     public CompoundTag save(CompoundTag tag, net.minecraft.core.HolderLookup.Provider provider) {
-        ListTag targets = new ListTag();
-        fallbackTargets.forEach((key, fallbackPos) -> {
-            CompoundTag entry = new CompoundTag();
-            entry.putString("targetDimension", key.dimension());
-            entry.putInt("localX", key.pos().getX());
-            entry.putInt("localY", key.pos().getY());
-            entry.putInt("localZ", key.pos().getZ());
-            entry.putString("fallbackDimension", fallbackPos.dimension().location().toString());
-            entry.putInt("fallbackX", fallbackPos.pos().getX());
-            entry.putInt("fallbackY", fallbackPos.pos().getY());
-            entry.putInt("fallbackZ", fallbackPos.pos().getZ());
-            targets.add(entry);
-        });
-        tag.put("targets", targets);
+        ListTag targetList = new ListTag();
+        targets.forEach((key, target) -> targetList.add(TARGET_MAPPING_CODEC.encodeStart(NbtOps.INSTANCE, Map.entry(key, target)).getOrThrow()));
+        tag.put("targets", targetList);
         return tag;
     }
 
-    private record Key(String dimension, BlockPos pos) {
+    public record Target(GlobalPos pos, GlobalPos fallback, boolean placeAbove) {
+        private static final Codec<Target> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                GlobalPos.CODEC.fieldOf("pos").forGetter(Target::pos),
+                GlobalPos.CODEC.fieldOf("fallback").forGetter(Target::fallback),
+                Codec.BOOL.optionalFieldOf("placeAbove", false).forGetter(Target::placeAbove)
+        ).apply(instance, Target::new));
     }
 }
