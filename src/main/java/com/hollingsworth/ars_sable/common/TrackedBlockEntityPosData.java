@@ -203,7 +203,7 @@ public class TrackedBlockEntityPosData extends SavedData {
     }
 
     public static TrackedBlockEntityPosData from(ServerLevel level) {
-        return level.getServer().overworld().getDataStorage().computeIfAbsent(factory(), "fs_tracked_block_entity_pos");
+        return level.getDataStorage().computeIfAbsent(factory(), "fs_tracked_block_entity_pos");
     }
 
     private record EntryPair(UUID key, Entry value) {
