@@ -1,0 +1,154 @@
+package com.hollingsworth.ars_sable.common.gametest;
+
+import com.hollingsworth.ars_sable.ArsSable;
+import com.hollingsworth.ars_sable.common.TrackedBlockEntityPosData;
+import com.hollingsworth.ars_sable.common.sable.TrackedWorldPositionBlockEntity;
+import com.hollingsworth.arsnouveau.api.ANFakePlayer;
+import com.hollingsworth.arsnouveau.common.block.tile.StorageLecternTile;
+import com.hollingsworth.arsnouveau.common.entity.goal.bookwyrm.TransferTask;
+import com.hollingsworth.arsnouveau.setup.registry.BlockRegistry;
+import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Rotation;
+import net.neoforged.neoforge.gametest.GameTestHolder;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+
+import java.util.List;
+
+@GameTestHolder(ArsSable.MODID)
+@PrefixGameTestTemplate(false)
+public class StorageLecternTests {
+
+    public static final String TEMPLATE_EMPTY = "empty10";
+
+    @GameTest(template = TEMPLATE_EMPTY)
+    public static void movedHandlerPositionUpdatesLectern(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos ownerPos = new BlockPos(2, 1, 2);
+        BlockPos oldTarget = new BlockPos(4, 1, 2);
+        BlockPos newTarget = new BlockPos(5, 1, 2);
+        BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
+        BlockPos newTargetWorld = helper.absolutePos(newTarget);
+
+        StorageLecternTile owner = placeLectern(helper, ownerPos);
+        helper.setBlock(oldTarget, Blocks.CHEST);
+        owner.addHandlerPos(owner, oldTargetWorld);
+
+        SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
+
+        helper.assertTrue(owner.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Expected handler to move to " + newTargetWorld);
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Stale handler target was kept at " + oldTargetWorld);
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE_EMPTY)
+    public static void brokenLecternRemovesTrackedPositions(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos ownerPos = new BlockPos(2, 1, 7);
+        BlockPos target = new BlockPos(4, 1, 7);
+        BlockPos targetWorld = helper.absolutePos(target);
+
+        StorageLecternTile owner = placeLectern(helper, ownerPos);
+        helper.setBlock(target, Blocks.CHEST);
+        owner.addHandlerPos(owner, targetWorld);
+
+        TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
+        TrackedWorldPositionBlockEntity trackedOwner = (TrackedWorldPositionBlockEntity) owner;
+        helper.assertTrue(data.getEntry(trackedOwner.ars_sable$getTrackingId()) != null, "Expected tracked lectern entry before break");
+        helper.assertTrue(data.getTrackedPositions(trackedOwner.ars_sable$getTrackingId()).contains(targetWorld), "Expected tracked connection before break");
+
+        helper.setBlock(ownerPos, Blocks.AIR);
+
+        helper.assertTrue(data.getEntry(trackedOwner.ars_sable$getTrackingId()) == null, "Broken lectern kept tracked entry");
+        helper.assertTrue(data.getTrackedPositions(trackedOwner.ars_sable$getTrackingId()).isEmpty(), "Broken lectern kept tracked positions");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE_EMPTY)
+    public static void wipedLecternConnectionDoesNotTrackMovedFormerTarget(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos ownerPos = new BlockPos(2, 1, 8);
+        BlockPos oldTarget = new BlockPos(4, 1, 8);
+        BlockPos newTarget = new BlockPos(5, 1, 8);
+        BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
+        BlockPos newTargetWorld = helper.absolutePos(newTarget);
+
+        StorageLecternTile owner = placeLectern(helper, ownerPos);
+        helper.setBlock(oldTarget, Blocks.CHEST);
+        owner.addHandlerPos(owner, oldTargetWorld);
+
+        TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
+        TrackedWorldPositionBlockEntity trackedOwner = (TrackedWorldPositionBlockEntity) owner;
+        helper.assertTrue(data.getTrackedPositions(trackedOwner.ars_sable$getTrackingId()).contains(oldTargetWorld), "Expected tracked connection before wipe");
+
+        owner.onFinishedConnectionLast(oldTargetWorld, Direction.UP, null, ANFakePlayer.getPlayer(level));
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Dominion wand wipe kept handler target");
+        helper.assertTrue(data.getEntry(trackedOwner.ars_sable$getTrackingId()) == null, "Wiped lectern kept tracked entry");
+        helper.assertTrue(data.getTrackedPositions(trackedOwner.ars_sable$getTrackingId()).isEmpty(), "Wiped lectern kept tracked positions");
+
+        SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
+
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Former target was tracked after wipe");
+        helper.assertTrue(data.getEntry(trackedOwner.ars_sable$getTrackingId()) == null, "Former target move recreated tracked entry");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE_EMPTY)
+    public static void movedHandlerPositionClearsQueuedTransferTasks(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos ownerPos = new BlockPos(2, 1, 6);
+        BlockPos oldTarget = new BlockPos(4, 1, 6);
+        BlockPos newTarget = new BlockPos(5, 1, 6);
+        BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
+        BlockPos newTargetWorld = helper.absolutePos(newTarget);
+
+        StorageLecternTile owner = placeLectern(helper, ownerPos);
+        helper.setBlock(oldTarget, Blocks.CHEST);
+        owner.addHandlerPos(owner, oldTargetWorld);
+        owner.transferTasks.add(new TransferTask(oldTargetWorld, owner.getBlockPos(), ItemStack.EMPTY, level.getGameTime()));
+        owner.transferTasks.add(new TransferTask(owner.getBlockPos(), oldTargetWorld, ItemStack.EMPTY, level.getGameTime()));
+
+        SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
+
+        helper.assertTrue(owner.transferTasks.isEmpty(), "Queued transfer tasks were not cleared");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE_EMPTY)
+    public static void movedMainLecternPositionUpdatesLoadedLectern(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos ownerPos = new BlockPos(2, 1, 4);
+        BlockPos oldMain = new BlockPos(4, 1, 4);
+        BlockPos newMain = new BlockPos(5, 1, 4);
+        BlockPos oldMainWorld = helper.absolutePos(oldMain);
+        BlockPos newMainWorld = helper.absolutePos(newMain);
+
+        StorageLecternTile owner = placeLectern(helper, ownerPos);
+        placeLectern(helper, oldMain);
+        owner.mainLecternPos = oldMainWorld;
+        owner.onLoad();
+
+        SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldMainWorld, newMainWorld, 0, Rotation.NONE, level), List.of(oldMainWorld));
+
+        helper.assertTrue(newMainWorld.equals(owner.mainLecternPos), "Expected main lectern position to move to " + newMainWorld + ", actual=" + owner.mainLecternPos);
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(newMainWorld)), "Moved main lectern was added as a handler at " + newMainWorld);
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldMainWorld)), "Stale main lectern position was kept as a handler at " + oldMainWorld);
+        helper.succeed();
+    }
+
+    private static StorageLecternTile placeLectern(GameTestHelper helper, BlockPos pos) {
+        helper.setBlock(pos, BlockRegistry.CRAFTING_LECTERN.get().defaultBlockState());
+        if (helper.getBlockEntity(pos) instanceof StorageLecternTile lectern) {
+            return lectern;
+        }
+        helper.fail("Expected storage lectern at " + pos);
+        throw new IllegalStateException();
+    }
+
+}
