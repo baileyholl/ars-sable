@@ -1,14 +1,7 @@
 # Changelog
 
-Warp portals and scrolls now teleport you onto the sublevel if bound to a sublevel
+Makes warp portals and scrolls persist their connection between repeated sublevel assembly and disassembly
 
-Bookwyrms, Wixies, and Whirlisprigs are now tracked by the sublevel and will move with it
+Makes bookwyrm lecterns track their inventories as they are added and removed from sublevels
 
-Bookwyrms will now path correctly on sublevels
-
-Fixes out of memory errors with starbuncles and golems on sublevels
-
-Fixes flying items and colored projectiles spawning incorrectly on sublevels
-
-Planariums, Containment Jars, and pedestals now render correctly on sublevels
-
+Fixes bookwyrms flying away when the bookwyrm lectern is connected to a sublevel
