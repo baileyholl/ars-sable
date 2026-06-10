@@ -49,8 +49,8 @@ public class WarpSableHelper {
         if (targetSubLevel == null) {
             return new Vec3(x, placeAbove ? y + 1.0D : y, z);
         }
-        Vector3d projected = SableCompanion.INSTANCE.projectOutOfSubLevel(level, new Vector3d(x, y, z), new Vector3d());
-        return new Vec3(projected.x(), adjustedY(level, placeAbove ? targetPos.above() : targetPos), projected.z());
+        Vector3d projected = SableProjectionHelper.projectOut(level, x, y, z);
+        return new Vec3(projected.x(), SableProjectionHelper.projectedTopY(level, placeAbove ? targetPos.above() : targetPos), projected.z());
     }
 
     public static void trackWarpTarget(ServerLevel serverLevel, GlobalPos target) {
@@ -94,19 +94,5 @@ public class WarpSableHelper {
             }
         }
         return original;
-    }
-
-    private static double adjustedY(Level level, BlockPos localSpawnPos) {
-        double x = localSpawnPos.getX();
-        double y = localSpawnPos.getY();
-        double z = localSpawnPos.getZ();
-        return Math.ceil(Math.max(
-                Math.max(projectedY(level, x, y, z), projectedY(level, x + 1.0D, y, z)),
-                Math.max(projectedY(level, x, y, z + 1.0D), projectedY(level, x + 1.0D, y, z + 1.0D))
-        ));
-    }
-
-    private static double projectedY(Level level, double x, double y, double z) {
-        return SableCompanion.INSTANCE.projectOutOfSubLevel(level, new Vector3d(x, y, z), new Vector3d()).y();
     }
 }

@@ -6,7 +6,6 @@ import com.hollingsworth.arsnouveau.common.world.saved_data.JarDimData;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
-import dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.EntityMovementExtension;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerLevel;
@@ -40,23 +39,23 @@ public class PlanariumHelpers {
         if (!(tile.getLevel() instanceof ServerLevel serverLevel)) {
             return;
         }
-        SubLevelAccess entitySublevel = SableCompanion.INSTANCE.getLastTrackingSubLevel(entity);
+        // Always track the floor block the entity stood on, whether or not it is currently on a
+        // sublevel, so the block can be followed as it is assembled into and out of sublevels while
+        // the player is inside. Mirrors WarpSableHelper#bindPosition.
+        SubLevelAccess entitySublevel = SableCompanion.INSTANCE.getTrackingOrVehicleSubLevel(entity);
         if (entitySublevel == null) {
-            SublevelPosData.from(serverLevel).removePlayer(entity.getUUID());
-            original.call(entity);
-            return;
+            entitySublevel = SableCompanion.INSTANCE.getLastTrackingSubLevel(entity);
         }
-        SubLevelAccess tileSublevel = SableCompanion.INSTANCE.getContaining(tile);
-        if (tileSublevel == null) {
-            SublevelPosData.from(serverLevel).removePlayer(entity.getUUID());
-            original.call(entity);
-            return;
+        BlockPos floorPos;
+        GlobalPos fallbackPos;
+        if (entitySublevel != null) {
+            floorPos = BlockPos.containing(entitySublevel.logicalPose().transformPositionInverse(entity.position())).below();
+            fallbackPos = GlobalPos.of(serverLevel.dimension(), SableProjectionHelper.projectStandingPos(serverLevel, floorPos));
+        } else {
+            floorPos = entity.blockPosition().below();
+            fallbackPos = GlobalPos.of(serverLevel.dimension(), entity.blockPosition());
         }
-        if (!(entity instanceof EntityMovementExtension movementExtension)) {
-            return;
-        }
-        BlockPos restorePos = movementExtension.sable$getInBlockStatePos().subtract(tile.getBlockPos());
-        SublevelPosData.from(serverLevel).put(entity.getUUID(), tileSublevel.getUniqueId(), tile.getBlockPos(), new JarDimData.RotPos(new GlobalPos(entity.level().dimension(), restorePos), entity.getRotationVector()));
+        SublevelPosData.from(serverLevel).put(entity.getUUID(), GlobalPos.of(serverLevel.dimension(), floorPos.immutable()), entity.getRotationVector(), fallbackPos);
         original.call(entity);
     }
 }
