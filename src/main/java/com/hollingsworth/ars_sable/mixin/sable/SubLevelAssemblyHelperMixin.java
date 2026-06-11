@@ -19,7 +19,8 @@ public class SubLevelAssemblyHelperMixin {
         WarpSublevelTargetData warpData = WarpSublevelTargetData.from(level);
         SublevelPosData sublevelPosData = SublevelPosData.from(level);
         for (BlockPos oldPos : blocks) {
-            BlockPos newPos = transform.apply(oldPos);
+            oldPos = oldPos.immutable();
+            BlockPos newPos = transform.apply(oldPos).immutable();
             if (!newPos.equals(oldPos)) {
                 data.handleBlockMoved(level, oldPos, newPos);
                 warpData.handleBlockMoved(level, oldPos, newPos);

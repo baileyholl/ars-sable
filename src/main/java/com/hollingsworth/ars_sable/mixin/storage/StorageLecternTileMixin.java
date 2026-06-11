@@ -90,10 +90,10 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
     public Collection<BlockPos> ars_sable$getTrackedPositions() {
         LinkedHashSet<BlockPos> trackedPositions = new LinkedHashSet<>();
         if (mainLecternPos != null) {
-            trackedPositions.add(mainLecternPos.immutable());
+            trackedPositions.add(mainLecternPos);
         }
         for (StorageLecternTile.HandlerPos handlerPos : handlerPosList) {
-            trackedPositions.add(handlerPos.pos().immutable());
+            trackedPositions.add(handlerPos.pos());
         }
         return trackedPositions;
     }
@@ -102,7 +102,7 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
     public void ars_sable$replaceTrackedPosition(BlockPos oldPos, BlockPos newPos) {
         boolean changed = false;
         if (Objects.equals(mainLecternPos, oldPos)) {
-            mainLecternPos = newPos.immutable();
+            mainLecternPos = newPos;
             changed = true;
         }
 
@@ -110,7 +110,7 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
         for (StorageLecternTile.HandlerPos handlerPos : handlerPosList) {
             BlockPos handlerPosValue = handlerPos.pos();
             if (Objects.equals(handlerPosValue, oldPos)) {
-                handlerPos.pos = newPos.immutable();
+                handlerPos.pos = newPos;
                 handlerPos.handler = ars_sable$createCapabilityCache(newPos);
                 changed = true;
             }
@@ -161,7 +161,7 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
                 continue;
             }
             if (handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(pos))) {
-                handlerPosList.add(new StorageLecternTile.HandlerPos(pos.immutable(), ars_sable$createCapabilityCache(pos)));
+                handlerPosList.add(new StorageLecternTile.HandlerPos(pos, ars_sable$createCapabilityCache(pos)));
             }
         }
 

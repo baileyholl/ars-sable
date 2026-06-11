@@ -55,7 +55,7 @@ public class PlanariumHelpers {
             floorPos = entity.blockPosition().below();
             fallbackPos = GlobalPos.of(serverLevel.dimension(), entity.blockPosition());
         }
-        SublevelPosData.from(serverLevel).put(entity.getUUID(), GlobalPos.of(serverLevel.dimension(), floorPos.immutable()), entity.getRotationVector(), fallbackPos);
+        SublevelPosData.from(serverLevel).put(serverLevel, entity.getUUID(), GlobalPos.of(serverLevel.dimension(), floorPos), entity.getRotationVector(), fallbackPos);
         original.call(entity);
     }
 }

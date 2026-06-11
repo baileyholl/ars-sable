@@ -26,9 +26,14 @@ public class SableProjectionHelper {
         return Mth.ceil(max);
     }
 
+    public static BlockPos projectTargetPos(Level level, BlockPos targetPos, boolean placeAbove) {
+        Vector3d realPos = projectOut(level, targetPos.getX() + 0.5D, targetPos.getY(), targetPos.getZ() + 0.5D);
+        int y = projectedTopY(level, placeAbove ? targetPos.above() : targetPos);
+        return new BlockPos(Mth.floor(realPos.x()), y, Mth.floor(realPos.z()));
+    }
+
     // Projects a floor block out of its sublevel and returns the feet-level position standing on top of it.
     public static BlockPos projectStandingPos(Level level, BlockPos floorPos) {
-        Vector3d realPos = projectOut(level, floorPos.getX() + 0.5D, floorPos.getY(), floorPos.getZ() + 0.5D);
-        return new BlockPos(Mth.floor(realPos.x()), projectedTopY(level, floorPos.above()), Mth.floor(realPos.z()));
+        return projectTargetPos(level, floorPos, true);
     }
 }

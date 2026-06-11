@@ -29,6 +29,14 @@ public class WarpSableHelper {
         GlobalPos key = GlobalPos.of(level.dimension(), targetPos);
         WarpSublevelTargetData targetData = WarpSublevelTargetData.from(serverLevel);
         Target target = targetData.get(key);
+        if (target != null && target.restorePos().isPresent()) {
+            // The target's sublevel is unavailable
+            GlobalPos restorePos = target.restorePos().get();
+            if (restorePos.dimension().equals(level.dimension())) {
+                BlockPos snapshot = restorePos.pos();
+                return new Vec3(snapshot.getX() + 0.5D, snapshot.getY(), snapshot.getZ() + 0.5D);
+            }
+        }
         GlobalPos trackedTarget = target == null ? null : target.pos();
         boolean placeAbove = target != null && target.placeAbove();
 
@@ -58,7 +66,7 @@ public class WarpSableHelper {
         if (targetData.get(target) != null) {
             return;
         }
-        targetData.put(target, target);
+        targetData.put(serverLevel, target, target);
     }
 
     public static BlockPos bindPosition(Player player, BlockPos original) {
@@ -77,8 +85,9 @@ public class WarpSableHelper {
         BlockPos localPos = BlockPos.containing(subLevel.logicalPose().transformPositionInverse(player.position())).below();
         Vec3 fallbackPos = SableCompanion.INSTANCE.projectOutOfSubLevel(serverLevel, localPos.getCenter());
         WarpSublevelTargetData.from(serverLevel).put(
-                GlobalPos.of(serverLevel.dimension(), localPos.immutable()),
-                GlobalPos.of(serverLevel.dimension(), localPos.immutable()),
+                serverLevel,
+                GlobalPos.of(serverLevel.dimension(), localPos),
+                GlobalPos.of(serverLevel.dimension(), localPos),
                 GlobalPos.of(serverLevel.dimension(), BlockPos.containing(fallbackPos)),
                 true
         );

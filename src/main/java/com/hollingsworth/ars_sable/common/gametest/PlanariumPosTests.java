@@ -34,7 +34,7 @@ public class PlanariumPosTests {
         BlockPos fallbackWorld = helper.absolutePos(new BlockPos(2, 1, 2));
 
         SublevelPosData data = SublevelPosData.from(level);
-        data.put(playerId, GlobalPos.of(level.dimension(), enteredFromWorld), Vec2.ZERO, GlobalPos.of(level.dimension(), fallbackWorld));
+        data.put(level, playerId,GlobalPos.of(level.dimension(), enteredFromWorld), Vec2.ZERO, GlobalPos.of(level.dimension(), fallbackWorld));
 
         SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(enteredFromWorld, firstMoveWorld, 0, Rotation.NONE, level), List.of(enteredFromWorld));
         SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(firstMoveWorld, secondMoveWorld, 0, Rotation.NONE, level), List.of(firstMoveWorld));
@@ -54,7 +54,7 @@ public class PlanariumPosTests {
         BlockPos fallbackWorld = helper.absolutePos(new BlockPos(2, 1, 4));
 
         SublevelPosData data = SublevelPosData.from(level);
-        data.put(playerId, GlobalPos.of(level.dimension(), enteredFromWorld), Vec2.ZERO, GlobalPos.of(level.dimension(), fallbackWorld));
+        data.put(level, playerId,GlobalPos.of(level.dimension(), enteredFromWorld), Vec2.ZERO, GlobalPos.of(level.dimension(), fallbackWorld));
 
         GlobalPos resolved = data.getTransformedPos(level, playerId);
         helper.assertTrue(resolved != null && resolved.pos().equals(fallbackWorld), "Expected unmoved restore pos to fall back to " + fallbackWorld + ", actual=" + (resolved == null ? null : resolved.pos()));
@@ -74,7 +74,7 @@ public class PlanariumPosTests {
         BlockPos firstSublevelPos = firstSubLevel.getPlot().getCenterBlock();
 
         SublevelPosData data = SublevelPosData.from(level);
-        data.put(playerId, GlobalPos.of(level.dimension(), firstSublevelPos), Vec2.ZERO,
+        data.put(level, playerId,GlobalPos.of(level.dimension(), firstSublevelPos), Vec2.ZERO,
                 GlobalPos.of(level.dimension(), SableProjectionHelper.projectStandingPos(level, firstSublevelPos)));
 
         GlobalPos onSublevel = data.getTransformedPos(level, playerId);
@@ -108,7 +108,7 @@ public class PlanariumPosTests {
         BlockPos sublevelPos = subLevel.getPlot().getCenterBlock();
 
         SublevelPosData data = SublevelPosData.from(level);
-        data.put(playerId, GlobalPos.of(level.dimension(), sublevelPos), Vec2.ZERO,
+        data.put(level, playerId,GlobalPos.of(level.dimension(), sublevelPos), Vec2.ZERO,
                 GlobalPos.of(level.dimension(), SableProjectionHelper.projectStandingPos(level, sublevelPos)));
 
         BlockPos expectedSnapshot = SableProjectionHelper.projectStandingPos(level, sublevelPos);
@@ -125,6 +125,30 @@ public class PlanariumPosTests {
     }
 
     @GameTest(template = StorageLecternTests.TEMPLATE_EMPTY)
+    public static void restorePosServedAfterSublevelRemovedWhileUnloaded(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        UUID playerId = UUID.randomUUID();
+        BlockPos originalWorld = helper.absolutePos(new BlockPos(6, 1, 8));
+
+        level.setBlock(originalWorld, Blocks.CHEST.defaultBlockState(), 3);
+        ServerSubLevel subLevel = SubLevelAssemblyHelper.assembleBlocks(level, originalWorld, List.of(originalWorld), bounds(originalWorld));
+        BlockPos sublevelPos = subLevel.getPlot().getCenterBlock();
+
+        SublevelPosData data = SublevelPosData.from(level);
+        data.put(level, playerId, GlobalPos.of(level.dimension(), sublevelPos), Vec2.ZERO,
+                GlobalPos.of(level.dimension(), SableProjectionHelper.projectStandingPos(level, sublevelPos)));
+
+        BlockPos expectedSnapshot = SableProjectionHelper.projectStandingPos(level, sublevelPos);
+        data.setSublevelLoaded(level, subLevel.getUniqueId(), false);
+        data.removeSublevel(level, subLevel.getUniqueId());
+
+        GlobalPos afterRemoval = data.getTransformedPos(level, playerId);
+        helper.assertTrue(afterRemoval != null && afterRemoval.pos().equals(expectedSnapshot), "Expected removal restore pos " + expectedSnapshot + ", actual=" + (afterRemoval == null ? null : afterRemoval.pos()));
+        data.removePlayer(playerId);
+        helper.succeed();
+    }
+
+    @GameTest(template = StorageLecternTests.TEMPLATE_EMPTY)
     public static void restorePosTracksWorldPosAssembledIntoSublevel(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         UUID playerId = UUID.randomUUID();
@@ -135,7 +159,7 @@ public class PlanariumPosTests {
         // position as fallback, matching PlanariumHelpers#sendEntityTo.
         BlockPos feetPos = enteredFromWorld.above();
         SublevelPosData data = SublevelPosData.from(level);
-        data.put(playerId, GlobalPos.of(level.dimension(), enteredFromWorld), Vec2.ZERO, GlobalPos.of(level.dimension(), feetPos));
+        data.put(level, playerId,GlobalPos.of(level.dimension(), enteredFromWorld), Vec2.ZERO, GlobalPos.of(level.dimension(), feetPos));
 
         GlobalPos beforeAssembly = data.getTransformedPos(level, playerId);
         helper.assertTrue(beforeAssembly != null && beforeAssembly.pos().equals(feetPos), "Expected untouched world restore pos " + feetPos + ", actual=" + (beforeAssembly == null ? null : beforeAssembly.pos()));
