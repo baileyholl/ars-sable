@@ -78,17 +78,20 @@ public class WarpSableHelper {
         if (subLevel == null) {
             subLevel = SableCompanion.INSTANCE.getLastTrackingSubLevel(player);
         }
-        if (subLevel == null) {
-            return original;
+        BlockPos localPos;
+        BlockPos fallbackPos;
+        if (subLevel != null) {
+            localPos = BlockPos.containing(subLevel.logicalPose().transformPositionInverse(player.position())).below();
+            fallbackPos = BlockPos.containing(SableCompanion.INSTANCE.projectOutOfSubLevel(serverLevel, localPos.getCenter()));
+        } else {
+            localPos = original.below();
+            fallbackPos = localPos;
         }
-
-        BlockPos localPos = BlockPos.containing(subLevel.logicalPose().transformPositionInverse(player.position())).below();
-        Vec3 fallbackPos = SableCompanion.INSTANCE.projectOutOfSubLevel(serverLevel, localPos.getCenter());
         WarpSublevelTargetData.from(serverLevel).put(
                 serverLevel,
                 GlobalPos.of(serverLevel.dimension(), localPos),
                 GlobalPos.of(serverLevel.dimension(), localPos),
-                GlobalPos.of(serverLevel.dimension(), BlockPos.containing(fallbackPos)),
+                GlobalPos.of(serverLevel.dimension(), fallbackPos),
                 true
         );
         return localPos;
