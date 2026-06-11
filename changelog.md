@@ -1,7 +1,5 @@
 # Changelog
 
-Makes warp portals and scrolls persist their connection between repeated sublevel assembly and disassembly
+Make planariums persist bound connections between sublevel assembly
 
-Makes bookwyrm lecterns track their inventories as they are added and removed from sublevels
-
-Fixes bookwyrms flying away when the bookwyrm lectern is connected to a sublevel
+Fix warp portals and scrolls sending to incorrect location when the sublevel is unloaded
