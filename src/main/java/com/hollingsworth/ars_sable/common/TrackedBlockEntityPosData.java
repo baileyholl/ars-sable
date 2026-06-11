@@ -3,7 +3,6 @@ package com.hollingsworth.ars_sable.common;
 import com.hollingsworth.ars_sable.common.sable.TrackedWorldPositionBlockEntity;
 import com.hollingsworth.arsnouveau.common.util.ANCodecs;
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -19,81 +18,77 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class TrackedBlockEntityPosData extends SavedData {
-    private final Map<UUID, Entry> entries = new HashMap<>();
+    // Tracking ID from TrackedWorldPositionBlockEntity -> the block entity's position
+    private final Map<UUID, BlockPos> blockEntityPosById = new HashMap<>();
     private final Map<UUID, HashSet<BlockPos>> trackedPositions = new HashMap<>();
-    private final Map<BlockPos, UUID> blockEntityPositions = new HashMap<>();
-    private final Map<BlockPos, HashSet<UUID>> trackedPositionToEntries = new HashMap<>();
+    // Blockpos back to the TrackedWorldPositionBlockEntity id
+    private final TrackedPosIndex<BlockPos, UUID> blockEntityPosIndex = new TrackedPosIndex<>();
+    private final TrackedPosIndex<BlockPos, UUID> trackedPositionToEntries = new TrackedPosIndex<>();
 
-    private static final Codec<Map<UUID, Entry>> ENTRIES_CODEC = EntryPair.CODEC.listOf()
-            .xmap(
-                    list -> list.stream().collect(Collectors.toMap(EntryPair::key, EntryPair::value)),
-                    map -> map.entrySet().stream().map(entry -> new EntryPair(entry.getKey(), entry.getValue())).toList()
-            );
+    private static final Codec<Map<UUID, BlockPos>> ENTRIES_CODEC =
+            uuidKeyedMapCodec("value", BlockPos.CODEC.fieldOf("block_entity_pos").codec());
 
-    private static final Codec<Map<UUID, HashSet<BlockPos>>> TRACKED_POSITIONS_CODEC = TrackedPositionEntry.CODEC.listOf()
-            .xmap(
-                    list -> list.stream().collect(Collectors.toMap(TrackedPositionEntry::key, TrackedPositionEntry::positions)),
-                    map -> map.entrySet().stream().map(entry -> new TrackedPositionEntry(entry.getKey(), entry.getValue())).toList()
-            );
+    private static final Codec<Map<UUID, HashSet<BlockPos>>> TRACKED_POSITIONS_CODEC =
+            uuidKeyedMapCodec("positions", BlockPos.CODEC.listOf().xmap(HashSet::new, List::copyOf));
 
     public static final Codec<TrackedBlockEntityPosData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            ENTRIES_CODEC.optionalFieldOf("entries", Map.of()).forGetter(data -> data.entries),
+            ENTRIES_CODEC.optionalFieldOf("entries", Map.of()).forGetter(data -> data.blockEntityPosById),
             TRACKED_POSITIONS_CODEC.optionalFieldOf("tracked_positions", Map.of()).forGetter(data -> data.trackedPositions)
     ).apply(instance, (entries, trackedPositions) -> {
         TrackedBlockEntityPosData data = new TrackedBlockEntityPosData();
-        data.entries.putAll(entries);
+        data.blockEntityPosById.putAll(entries);
         data.trackedPositions.putAll(trackedPositions);
         data.rebuildIndexes();
         return data;
     }));
 
+    private static <V> Codec<Map<UUID, V>> uuidKeyedMapCodec(String valueFieldName, Codec<V> valueCodec) {
+        Codec<Map.Entry<UUID, V>> pairCodec = RecordCodecBuilder.create(instance -> instance.group(
+                UUIDUtil.CODEC.fieldOf("key").forGetter(Map.Entry::getKey),
+                valueCodec.fieldOf(valueFieldName).forGetter(Map.Entry::getValue)
+        ).apply(instance, Map::entry));
+        return pairCodec.listOf().xmap(
+                list -> list.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
+                map -> List.copyOf(map.entrySet())
+        );
+    }
+
     private void rebuildIndexes() {
-        blockEntityPositions.clear();
+        blockEntityPosIndex.clear();
         trackedPositionToEntries.clear();
 
-        for (Entry entry : entries.values()) {
-            blockEntityPositions.put(entry.blockEntityPos(), entry.id());
-        }
+        blockEntityPosById.forEach((id, pos) -> blockEntityPosIndex.add(pos, id));
 
         for (Map.Entry<UUID, HashSet<BlockPos>> entry : trackedPositions.entrySet()) {
             UUID id = entry.getKey();
             for (BlockPos pos : entry.getValue()) {
-                trackedPositionToEntries.computeIfAbsent(pos, key -> new HashSet<>()).add(id);
+                trackedPositionToEntries.add(pos, id);
             }
         }
     }
 
     public void sync(UUID id, BlockPos blockEntityPos, Collection<BlockPos> trackedPositions) {
-        Entry oldEntry = entries.put(id, new Entry(id, blockEntityPos.immutable()));
-        if (oldEntry != null && !oldEntry.blockEntityPos().equals(blockEntityPos)) {
-            blockEntityPositions.remove(oldEntry.blockEntityPos());
+        BlockPos oldPos = blockEntityPosById.put(id, blockEntityPos);
+        if (oldPos != null) {
+            blockEntityPosIndex.remove(oldPos, id);
         }
-        blockEntityPositions.put(blockEntityPos.immutable(), id);
+        blockEntityPosIndex.add(blockEntityPos, id);
         setTrackedPositions(id, trackedPositions);
     }
 
     public void setTrackedPositions(UUID id, Collection<BlockPos> trackedPositions) {
         HashSet<BlockPos> oldPositions = this.trackedPositions.getOrDefault(id, new HashSet<>());
-        HashSet<BlockPos> newPositions = trackedPositions.stream()
-                .filter(Objects::nonNull)
-                .map(BlockPos::immutable)
-                .collect(Collectors.toCollection(HashSet::new));
+        HashSet<BlockPos> newPositions = new HashSet<>(trackedPositions);
 
         for (BlockPos oldPos : oldPositions) {
             if (newPositions.contains(oldPos)) {
                 continue;
             }
-            HashSet<UUID> ids = trackedPositionToEntries.get(oldPos);
-            if (ids != null) {
-                ids.remove(id);
-                if (ids.isEmpty()) {
-                    trackedPositionToEntries.remove(oldPos);
-                }
-            }
+            trackedPositionToEntries.remove(oldPos, id);
         }
 
         for (BlockPos newPos : newPositions) {
-            trackedPositionToEntries.computeIfAbsent(newPos, key -> new HashSet<>()).add(id);
+            trackedPositionToEntries.add(newPos, id);
         }
 
         if (newPositions.isEmpty()) {
@@ -103,32 +98,26 @@ public class TrackedBlockEntityPosData extends SavedData {
         }
     }
 
-    public @Nullable Entry getEntry(UUID id) {
-        return entries.get(id);
+    public @Nullable BlockPos getBlockEntityPos(UUID id) {
+        return blockEntityPosById.get(id);
     }
 
     public Set<BlockPos> getTrackedPositions(UUID id) {
         HashSet<BlockPos> positions = trackedPositions.get(id);
-        if (positions == null || positions.isEmpty()) {
-            return Set.of();
-        }
-        return positions.stream()
-                .map(BlockPos::immutable)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return positions == null ? Set.of() : positions;
     }
 
     public void removeIfAtPosition(UUID id, BlockPos blockEntityPos) {
-        Entry entry = entries.get(id);
-        if (entry == null || !entry.blockEntityPos().equals(blockEntityPos)) {
+        if (!blockEntityPos.equals(blockEntityPosById.get(id))) {
             return;
         }
         remove(id);
     }
 
     public void remove(UUID id) {
-        Entry removedEntry = entries.remove(id);
-        if (removedEntry != null) {
-            blockEntityPositions.remove(removedEntry.blockEntityPos());
+        BlockPos removedPos = blockEntityPosById.remove(id);
+        if (removedPos != null) {
+            blockEntityPosIndex.remove(removedPos, id);
         }
 
         HashSet<BlockPos> removedPositions = trackedPositions.remove(id);
@@ -137,49 +126,35 @@ public class TrackedBlockEntityPosData extends SavedData {
         }
 
         for (BlockPos trackedPos : removedPositions) {
-            HashSet<UUID> ids = trackedPositionToEntries.get(trackedPos);
-            if (ids != null) {
-                ids.remove(id);
-                if (ids.isEmpty()) {
-                    trackedPositionToEntries.remove(trackedPos);
-                }
-            }
+            trackedPositionToEntries.remove(trackedPos, id);
         }
     }
 
     public void handleBlockMoved(ServerLevel level, BlockPos oldPos, BlockPos newPos) {
-        UUID blockEntityId = blockEntityPositions.remove(oldPos);
-        if (blockEntityId != null) {
-            Entry entry = entries.get(blockEntityId);
-            if (entry != null) {
-                Entry movedEntry = new Entry(blockEntityId, newPos.immutable());
-                entries.put(blockEntityId, movedEntry);
-                blockEntityPositions.put(newPos.immutable(), blockEntityId);
+        blockEntityPosIndex.moveAll(oldPos, newPos, id -> {
+            if (!oldPos.equals(blockEntityPosById.get(id))) {
+                return false;
             }
-        }
+            blockEntityPosById.put(id, newPos);
+            return true;
+        });
 
-        HashSet<UUID> affectedIds = trackedPositionToEntries.remove(oldPos);
-        if (affectedIds == null || affectedIds.isEmpty()) {
-            return;
-        }
-
-        for (UUID affectedId : List.copyOf(affectedIds)) {
+        trackedPositionToEntries.moveAll(oldPos, newPos, affectedId -> {
             HashSet<BlockPos> positions = trackedPositions.get(affectedId);
             if (positions == null || !positions.remove(oldPos)) {
-                continue;
+                return false;
             }
-            positions.add(newPos.immutable());
-            trackedPositionToEntries.computeIfAbsent(newPos.immutable(), key -> new HashSet<>()).add(affectedId);
+            positions.add(newPos);
 
-            Entry entry = entries.get(affectedId);
-            if (entry == null) {
-                continue;
+            BlockPos blockEntityPos = blockEntityPosById.get(affectedId);
+            if (blockEntityPos != null) {
+                BlockEntity blockEntity = level.getBlockEntity(blockEntityPos);
+                if (blockEntity instanceof TrackedWorldPositionBlockEntity trackedBlockEntity) {
+                    trackedBlockEntity.ars_sable$replaceTrackedPosition(oldPos, newPos);
+                }
             }
-            BlockEntity blockEntity = level.getBlockEntity(entry.blockEntityPos());
-            if (blockEntity instanceof TrackedWorldPositionBlockEntity trackedBlockEntity) {
-                trackedBlockEntity.ars_sable$replaceTrackedPosition(oldPos, newPos);
-            }
-        }
+            return true;
+        });
     }
 
 
@@ -205,30 +180,4 @@ public class TrackedBlockEntityPosData extends SavedData {
     public static TrackedBlockEntityPosData from(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(factory(), "fs_tracked_block_entity_pos");
     }
-
-    private record EntryPair(UUID key, Entry value) {
-        static final Codec<EntryPair> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                UUIDUtil.CODEC.fieldOf("key").forGetter(EntryPair::key),
-                Entry.CODEC.codec().fieldOf("value").forGetter(EntryPair::value)
-        ).apply(instance, EntryPair::new));
-    }
-
-    private record TrackedPositionEntry(UUID key, HashSet<BlockPos> positions) {
-        static final Codec<TrackedPositionEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                UUIDUtil.CODEC.fieldOf("key").forGetter(TrackedPositionEntry::key),
-                BlockPos.CODEC.listOf()
-                        .xmap(HashSet::new, List::copyOf)
-                        .fieldOf("positions").forGetter(TrackedPositionEntry::positions)
-        ).apply(instance, TrackedPositionEntry::new));
-    }
-
-    public record Entry(UUID id, BlockPos blockEntityPos) {
-        public static final MapCodec<Entry> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                UUIDUtil.CODEC.fieldOf("id").forGetter(Entry::id),
-                BlockPos.CODEC.fieldOf("block_entity_pos").forGetter(Entry::blockEntityPos)
-        ).apply(instance, Entry::new));
-    }
 }
-
-
-

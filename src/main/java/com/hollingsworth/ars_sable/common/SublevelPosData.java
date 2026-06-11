@@ -1,185 +1,163 @@
 package com.hollingsworth.ars_sable.common;
 
-import com.hollingsworth.arsnouveau.common.util.ANCodecs;
-import com.hollingsworth.arsnouveau.common.world.saved_data.DimMappingData;
+import com.hollingsworth.ars_sable.common.helper.SableProjectionHelper;
 import com.hollingsworth.arsnouveau.common.world.saved_data.JarDimData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.ryanhcode.sable.companion.SableCompanion;
-import net.minecraft.core.*;
+import dev.ryanhcode.sable.companion.SubLevelAccess;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
-import org.joml.Vector3d;
+import net.minecraft.world.phys.Vec2;
 
 import javax.annotation.Nullable;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 public class SublevelPosData extends SavedData {
-    private final Map<UUID, Entry> PLAYER_TO_PLANARIUM_SUBLEVEL = new HashMap<>();
-    private final Map<UUID, HashSet<UUID>> SUBLEVEL_TO_PLAYERS = new HashMap<>();
+    // Player -> the floor block they stood on when entering the planarium
+    private final Map<UUID, Entry> entries = new HashMap<>();
+    // Current tracked position -> players whose entries should update when that block moves
+    private final TrackedPosIndex<GlobalPos, UUID> trackedPosToPlayers = new TrackedPosIndex<>();
+    // Containing sublevel id -> players whose entries are currently on that sublevel
+    private final TrackedPosIndex<UUID, UUID> sublevelToPlayers = new TrackedPosIndex<>();
 
-    private static final Codec<Map<UUID, Entry>> ENTRIES_CODEC = KeyValuePair.CODEC.listOf()
-            .xmap(
-                    list -> list.stream().collect(Collectors.toMap(KeyValuePair::key, KeyValuePair::value)),
-                    map -> map.entrySet().stream().map(e -> new KeyValuePair(e.getKey(), e.getValue())).toList()
-            );
+    private static final Codec<Map.Entry<UUID, Entry>> ENTRY_MAPPING_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            UUIDUtil.CODEC.fieldOf("key").forGetter(Map.Entry::getKey),
+            Entry.CODEC.codec().fieldOf("data").forGetter(Map.Entry::getValue)
+    ).apply(instance, Map::entry));
 
-    private static final Codec<Map<UUID, HashSet<UUID>>> SUBLEVELS_CODEC = SublevelEntry.CODEC.listOf()
-            .xmap(
-                    list -> list.stream().collect(Collectors.toMap(SublevelEntry::sublevel, SublevelEntry::keys)),
-                    map -> map.entrySet().stream().map(e -> new SublevelEntry(e.getKey(), e.getValue())).toList()
-            );
-
-    public static final Codec<SublevelPosData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            ENTRIES_CODEC.fieldOf("entries").forGetter(d -> d.PLAYER_TO_PLANARIUM_SUBLEVEL),
-            SUBLEVELS_CODEC.fieldOf("sublevels").forGetter(d -> d.SUBLEVEL_TO_PLAYERS)
-    ).apply(instance, (entries, sublevels) -> {
-        SublevelPosData data = new SublevelPosData();
-        data.PLAYER_TO_PLANARIUM_SUBLEVEL.putAll(entries);
-        data.SUBLEVEL_TO_PLAYERS.putAll(sublevels);
-        return data;
-    }));
-
-    public void put(UUID playerId, UUID sublevelId, BlockPos plotPos, JarDimData.RotPos rotPos) {
-        Entry oldEntry = PLAYER_TO_PLANARIUM_SUBLEVEL.get(playerId);
-        if (oldEntry != null && !oldEntry.sublevelId().equals(sublevelId)) {
-            removePlayer(playerId);
-        }
-        PLAYER_TO_PLANARIUM_SUBLEVEL.put(playerId, new Entry(sublevelId, plotPos, rotPos, true, Optional.empty()));
-        SUBLEVEL_TO_PLAYERS.computeIfAbsent(sublevelId, k -> new HashSet<>()).add(playerId);
+    public void put(ServerLevel level, UUID playerId, GlobalPos trackedFloorPos, Vec2 rot, GlobalPos fallbackPos) {
+        removePlayer(playerId);
+        Optional<UUID> sublevelId = containingSublevelId(level, trackedFloorPos.pos());
+        entries.put(playerId, new Entry(new JarDimData.RotPos(trackedFloorPos, rot), trackedFloorPos, fallbackPos, sublevelId, Optional.empty()));
+        trackedPosToPlayers.add(trackedFloorPos, playerId);
+        sublevelId.ifPresent(id -> sublevelToPlayers.add(id, playerId));
     }
 
-    public Entry getForPlayer(UUID id) {
-        return PLAYER_TO_PLANARIUM_SUBLEVEL.get(id);
+    public @Nullable Entry getForPlayer(UUID id) {
+        return entries.get(id);
     }
 
-    // Returns the pos transformed relative to the planarium in the real world, wherever the planarium may be now.
+    // Returns the pos transformed by any sublevels if applicable
     public @Nullable GlobalPos getTransformedPos(ServerLevel serverLevel, Player player) {
-        var entry = getForPlayer(player.getUUID());
+        return getTransformedPos(serverLevel, player.getUUID());
+    }
+
+    public @Nullable GlobalPos getTransformedPos(ServerLevel serverLevel, UUID playerId) {
+        Entry entry = entries.get(playerId);
         if (entry == null) {
             return null;
         }
-        if (!entry.isLoaded()) {
-            return entry.unloadedPos().orElse(null);
+        if (entry.restorePos().isPresent()) {
+            return entry.restorePos().get();
         }
-        return getTransformedPos(serverLevel, entry);
-    }
-
-    private @Nullable GlobalPos getTransformedPos(ServerLevel serverLevel, Entry entry) {
-        ServerLevel originalLevel = serverLevel.getServer().getLevel(entry.rotPos().pos().dimension());
-        if (originalLevel == null) {
+        GlobalPos tracked = entry.trackedPos();
+        ServerLevel trackedLevel = serverLevel.getServer().getLevel(tracked.dimension());
+        if (trackedLevel == null) {
             return null;
         }
-        JarDimData.RotPos enteredFrom = entry.rotPos();
-
-        BlockPos enteredFromOffset = enteredFrom.pos().pos();
-        return new GlobalPos(originalLevel.dimension(), tileOffsetPos(originalLevel, entry.localSublevelPos, enteredFromOffset));
-    }
-
-    protected BlockPos tileOffsetPos(Level originalLevel, BlockPos localSublevelPos, BlockPos offsetPos) {
-        BlockPos localSpawnPos = localSublevelPos.offset(offsetPos);
-        Vector3d realSpawnPos = projectOut(originalLevel, localSpawnPos.getX() + 0.5D, localSpawnPos.getY(), localSpawnPos.getZ() + 0.5D);
-        int spawnY = Mth.ceil(maxProjectedTopY(originalLevel, localSpawnPos) - 1.0E-6D);
-        return new BlockPos(Mth.floor(realSpawnPos.x()), spawnY, Mth.floor(realSpawnPos.z()));
-    }
-
-    private double maxProjectedTopY(Level level, BlockPos localSpawnPos) {
-        double x = localSpawnPos.getX();
-        double y = localSpawnPos.getY();
-        double z = localSpawnPos.getZ();
-        return Math.max(
-                Math.max(projectedY(level, x, y, z), projectedY(level, x + 1.0D, y, z)),
-                Math.max(projectedY(level, x, y, z + 1.0D), projectedY(level, x + 1.0D, y, z + 1.0D))
-        );
-    }
-
-    private double projectedY(Level level, double x, double y, double z) {
-        return projectOut(level, x, y, z).y();
-    }
-
-    private Vector3d projectOut(Level level, double x, double y, double z) {
-        return SableCompanion.INSTANCE.projectOutOfSubLevel(level, new Vector3d(x, y, z), new Vector3d());
-    }
-
-    public void setSublevelLoaded(ServerLevel serverLevel, UUID sublevel, boolean isLoaded) {
-        var affectedPlayers = SUBLEVEL_TO_PLAYERS.get(sublevel);
-        if (affectedPlayers == null) {
-            return;
+        if (SableCompanion.INSTANCE.getContaining(trackedLevel, tracked.pos()) == null) {
+            // The tracked floor block is no longer on a sublevel
+            return tracked.equals(entry.originalPos()) ? entry.fallbackPos() : GlobalPos.of(tracked.dimension(), tracked.pos().above());
         }
-        for (UUID playerId : affectedPlayers) {
-            var entry = getForPlayer(playerId);
-            if (entry == null || !entry.sublevelId().equals(sublevel)) {
-                continue;
+        return GlobalPos.of(tracked.dimension(), SableProjectionHelper.projectStandingPos(trackedLevel, tracked.pos()));
+    }
+
+    public void handleBlockMoved(ServerLevel level, BlockPos oldPos, BlockPos newPos) {
+        GlobalPos oldTracked = GlobalPos.of(level.dimension(), oldPos);
+        GlobalPos newTracked = GlobalPos.of(level.dimension(), newPos);
+        trackedPosToPlayers.moveAll(oldTracked, newTracked, playerId -> {
+            Entry entry = entries.get(playerId);
+            // Keep the entry
+            if (entry == null || entry.restorePos().isPresent() || !entry.trackedPos().equals(oldTracked)) {
+                return false;
             }
-            Optional<GlobalPos> unloadedPos = isLoaded ? Optional.empty() : entry.unloadedPos();
-            if (!isLoaded) {
-                GlobalPos transformedPos = getTransformedPos(serverLevel, entry);
-                if (transformedPos != null) {
-                    unloadedPos = Optional.of(transformedPos);
-                }
+            Optional<UUID> newSublevelId = containingSublevelId(level, newPos);
+            if (!entry.sublevelId().equals(newSublevelId)) {
+                entry.sublevelId().ifPresent(id -> sublevelToPlayers.remove(id, playerId));
+                newSublevelId.ifPresent(id -> sublevelToPlayers.add(id, playerId));
             }
-            PLAYER_TO_PLANARIUM_SUBLEVEL.put(playerId, entry.withLoaded(isLoaded, unloadedPos));
-        }
+            entries.put(playerId, entry.withTrackedPos(newTracked).withSublevelId(newSublevelId));
+            return true;
+        });
     }
 
-    public void removeSublevel(ServerLevel serverLevel, UUID sublevel) {
-        var affectedPlayers = SUBLEVEL_TO_PLAYERS.get(sublevel);
-        if (affectedPlayers == null) {
-            return;
-        }
-        for (UUID playerId : affectedPlayers) {
-            var entry = getForPlayer(playerId);
+    public void setSublevelLoaded(ServerLevel serverLevel, UUID sublevelId, boolean isLoaded) {
+        for (UUID playerId : sublevelToPlayers.get(sublevelId)) {
+            Entry entry = entries.get(playerId);
             if (entry == null) {
                 continue;
             }
-            if (!entry.sublevelId().equals(sublevel)) {
-                continue;
-            }
-            PLAYER_TO_PLANARIUM_SUBLEVEL.remove(playerId);
-            ServerLevel dimLevel = serverLevel.getServer().getLevel(entry.rotPos.pos().dimension());
-            if (dimLevel == null) {
-                return;
-            }
-            // Ensure we are not already in another jar dimension, preventing players from getting trapped between two jars
-            DimMappingData dimMappingData = DimMappingData.from(serverLevel);
-            JarDimData jarData = JarDimData.from(dimLevel);
-            if (dimMappingData.getByKey(serverLevel.dimension().location()) == null) {
-                GlobalPos transformedPos = entry.isLoaded() ? GlobalPos.of(serverLevel.dimension(), tileOffsetPos(serverLevel, entry.localSublevelPos, entry.rotPos.pos().pos())) : entry.unloadedPos().orElse(null);
-                if (transformedPos != null) {
-                    jarData.setEnteredFrom(playerId, transformedPos, entry.rotPos.rot());
-                }
+            if (isLoaded) {
+                entries.put(playerId, entry.withRestorePos(Optional.empty()));
+            } else if (entry.restorePos().isEmpty()) {
+                GlobalPos restorePos = GlobalPos.of(entry.trackedPos().dimension(), SableProjectionHelper.projectStandingPos(serverLevel, entry.trackedPos().pos()));
+                entries.put(playerId, entry.withRestorePos(Optional.of(restorePos)));
             }
         }
-        SUBLEVEL_TO_PLAYERS.remove(sublevel);
+    }
+
+    public void removeSublevel(ServerLevel serverLevel, UUID sublevelId) {
+        for (UUID playerId : sublevelToPlayers.removeAll(sublevelId)) {
+            Entry entry = entries.get(playerId);
+            if (entry == null) {
+                continue;
+            }
+            Optional<GlobalPos> restorePos = entry.restorePos().or(() ->
+                    Optional.of(GlobalPos.of(entry.trackedPos().dimension(), SableProjectionHelper.projectStandingPos(serverLevel, entry.trackedPos().pos()))));
+            entries.put(playerId, entry.withSublevelId(Optional.empty()).withRestorePos(restorePos));
+        }
     }
 
     public void removePlayer(UUID playerId) {
-        var entry = getForPlayer(playerId);
-        if (entry != null) {
-            PLAYER_TO_PLANARIUM_SUBLEVEL.remove(playerId);
-            var playersInSublevel = SUBLEVEL_TO_PLAYERS.get(entry.sublevelId());
-            if (playersInSublevel != null) {
-                playersInSublevel.remove(playerId);
-                if (playersInSublevel.isEmpty()) {
-                    SUBLEVEL_TO_PLAYERS.remove(entry.sublevelId());
-                }
-            }
+        Entry entry = entries.remove(playerId);
+        if (entry == null) {
+            return;
         }
+        trackedPosToPlayers.remove(entry.trackedPos(), playerId);
+        entry.sublevelId().ifPresent(id -> sublevelToPlayers.remove(id, playerId));
+    }
+
+    private static Optional<UUID> containingSublevelId(ServerLevel level, BlockPos pos) {
+        SubLevelAccess containing = SableCompanion.INSTANCE.getContaining(level, pos);
+        return containing == null ? Optional.empty() : Optional.of(containing.getUniqueId());
     }
 
     public static SavedData.Factory<SublevelPosData> factory() {
         return new SavedData.Factory<>(SublevelPosData::new, SublevelPosData::load, null);
     }
 
-    public static SublevelPosData load(CompoundTag tag, HolderLookup.Provider p) {
-        return ANCodecs.decode(CODEC, tag);
+    public static SublevelPosData load(CompoundTag tag, HolderLookup.Provider provider) {
+        SublevelPosData data = new SublevelPosData();
+        ListTag entryList = tag.getList("entries", Tag.TAG_COMPOUND);
+        for (Tag value : entryList) {
+            ENTRY_MAPPING_CODEC.parse(NbtOps.INSTANCE, value).result().ifPresent(mapping ->
+                    data.entries.put(mapping.getKey(), mapping.getValue()));
+        }
+        data.rebuildIndexes();
+        return data;
+    }
+
+    private void rebuildIndexes() {
+        trackedPosToPlayers.clear();
+        sublevelToPlayers.clear();
+        entries.forEach((playerId, entry) -> {
+            trackedPosToPlayers.add(entry.trackedPos(), playerId);
+            entry.sublevelId().ifPresent(id -> sublevelToPlayers.add(id, playerId));
+        });
     }
 
     @Override
@@ -188,9 +166,11 @@ public class SublevelPosData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag pCompoundTag, HolderLookup.Provider pRegistries) {
-        pCompoundTag.merge((CompoundTag) CODEC.encodeStart(NbtOps.INSTANCE, this).getOrThrow());
-        return pCompoundTag;
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        ListTag entryList = new ListTag();
+        entries.forEach((playerId, entry) -> entryList.add(ENTRY_MAPPING_CODEC.encodeStart(NbtOps.INSTANCE, Map.entry(playerId, entry)).getOrThrow()));
+        tag.put("entries", entryList);
+        return tag;
     }
 
     public static SublevelPosData from(ServerLevel level) {
@@ -198,33 +178,29 @@ public class SublevelPosData extends SavedData {
                 .computeIfAbsent(factory(), "fs_sublevel_pos");
     }
 
-    private record KeyValuePair(UUID key, Entry value) {
-        static final Codec<KeyValuePair> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                UUIDUtil.CODEC.fieldOf("key").forGetter(KeyValuePair::key),
-                Entry.CODEC.codec().fieldOf("data").forGetter(KeyValuePair::value)
-        ).apply(instance, KeyValuePair::new));
-    }
-
-    private record SublevelEntry(UUID sublevel, HashSet<UUID> keys) {
-        static final Codec<SublevelEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                UUIDUtil.CODEC.fieldOf("sublevel").forGetter(SublevelEntry::sublevel),
-                UUIDUtil.CODEC.listOf()
-                        .xmap(HashSet::new, List::copyOf)
-                        .fieldOf("keys").forGetter(SublevelEntry::keys)
-        ).apply(instance, SublevelEntry::new));
-    }
-
-    public record Entry(UUID sublevelId, BlockPos localSublevelPos, JarDimData.RotPos rotPos, boolean isLoaded, Optional<GlobalPos> unloadedPos) {
+    public record Entry(JarDimData.RotPos rotPos, GlobalPos originalPos, GlobalPos fallbackPos, Optional<UUID> sublevelId, Optional<GlobalPos> restorePos) {
         public static final MapCodec<Entry> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                UUIDUtil.CODEC.fieldOf("sublevelId").forGetter(Entry::sublevelId),
-                BlockPos.CODEC.fieldOf("localSublevelPos").forGetter(Entry::localSublevelPos),
-                JarDimData.RotPos.CODEC.fieldOf("rotPos").forGetter(Entry::rotPos),
-                Codec.BOOL.optionalFieldOf("isLoaded", true).forGetter(Entry::isLoaded),
-                GlobalPos.CODEC.optionalFieldOf("unloadedPos").forGetter(Entry::unloadedPos)
+                JarDimData.RotPos.CODEC.codec().fieldOf("rotPos").forGetter(Entry::rotPos),
+                GlobalPos.CODEC.fieldOf("originalPos").forGetter(Entry::originalPos),
+                GlobalPos.CODEC.fieldOf("fallbackPos").forGetter(Entry::fallbackPos),
+                UUIDUtil.CODEC.optionalFieldOf("sublevelId").forGetter(Entry::sublevelId),
+                GlobalPos.CODEC.optionalFieldOf("restorePos").forGetter(Entry::restorePos)
         ).apply(instance, Entry::new));
 
-        public Entry withLoaded(boolean isLoaded, Optional<GlobalPos> unloadedPos) {
-            return new Entry(sublevelId, localSublevelPos, rotPos, isLoaded, unloadedPos);
+        public GlobalPos trackedPos() {
+            return rotPos.pos();
+        }
+
+        public Entry withTrackedPos(GlobalPos trackedPos) {
+            return new Entry(new JarDimData.RotPos(trackedPos, rotPos.rot()), originalPos, fallbackPos, sublevelId, restorePos);
+        }
+
+        public Entry withSublevelId(Optional<UUID> sublevelId) {
+            return new Entry(rotPos, originalPos, fallbackPos, sublevelId, restorePos);
+        }
+
+        public Entry withRestorePos(Optional<GlobalPos> restorePos) {
+            return new Entry(rotPos, originalPos, fallbackPos, sublevelId, restorePos);
         }
     }
 }

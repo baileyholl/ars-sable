@@ -30,7 +30,7 @@ public class TrackedBlockEntityPosDataTests {
 
         data.sync(id, ownerPos, List.of(targetA, targetB, targetA));
 
-        helper.assertTrue(data.getEntry(id).blockEntityPos().equals(ownerPos), "Expected entry position " + ownerPos);
+        helper.assertTrue(ownerPos.equals(data.getBlockEntityPos(id)), "Expected entry position " + ownerPos);
         helper.assertTrue(data.getTrackedPositions(id).equals(Set.of(targetA, targetB)), "Expected unique tracked positions");
         helper.succeed();
     }
@@ -71,11 +71,11 @@ public class TrackedBlockEntityPosDataTests {
         data.sync(id, ownerPos, List.of(target));
         data.removeIfAtPosition(id, wrongOwnerPos);
 
-        helper.assertTrue(data.getEntry(id) != null, "Entry was removed from the wrong owner position");
+        helper.assertTrue(data.getBlockEntityPos(id) != null, "Entry was removed from the wrong owner position");
 
         data.removeIfAtPosition(id, ownerPos);
 
-        helper.assertTrue(data.getEntry(id) == null, "Entry was not removed from matching owner position");
+        helper.assertTrue(data.getBlockEntityPos(id) == null, "Entry was not removed from matching owner position");
         helper.assertTrue(data.getTrackedPositions(id).isEmpty(), "Tracked positions were not removed");
         helper.succeed();
     }
@@ -97,7 +97,7 @@ public class TrackedBlockEntityPosDataTests {
         data.handleBlockMoved(level, oldOwnerPos, newOwnerPos);
         data.handleBlockMoved(level, oldTarget, newTarget);
 
-        helper.assertTrue(data.getEntry(ownerId).blockEntityPos().equals(newOwnerPos), "Moved owner entry was not updated");
+        helper.assertTrue(newOwnerPos.equals(data.getBlockEntityPos(ownerId)), "Moved owner entry was not updated");
         helper.assertTrue(data.getTrackedPositions(trackerId).equals(Set.of(newTarget)), "Moved tracked position was not updated");
         helper.succeed();
     }

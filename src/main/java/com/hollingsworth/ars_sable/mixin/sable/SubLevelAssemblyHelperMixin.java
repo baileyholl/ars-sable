@@ -1,5 +1,6 @@
 package com.hollingsworth.ars_sable.mixin.sable;
 
+import com.hollingsworth.ars_sable.common.SublevelPosData;
 import com.hollingsworth.ars_sable.common.TrackedBlockEntityPosData;
 import com.hollingsworth.ars_sable.common.WarpSublevelTargetData;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
@@ -16,11 +17,14 @@ public class SubLevelAssemblyHelperMixin {
     private static void ars_sable$trackMovedBlockPositions(ServerLevel level, SubLevelAssemblyHelper.AssemblyTransform transform, Iterable<BlockPos> blocks, CallbackInfo ci) {
         TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
         WarpSublevelTargetData warpData = WarpSublevelTargetData.from(level);
+        SublevelPosData sublevelPosData = SublevelPosData.from(level);
         for (BlockPos oldPos : blocks) {
-            BlockPos newPos = transform.apply(oldPos);
+            oldPos = oldPos.immutable();
+            BlockPos newPos = transform.apply(oldPos).immutable();
             if (!newPos.equals(oldPos)) {
                 data.handleBlockMoved(level, oldPos, newPos);
                 warpData.handleBlockMoved(level, oldPos, newPos);
+                sublevelPosData.handleBlockMoved(level, oldPos, newPos);
             }
         }
     }

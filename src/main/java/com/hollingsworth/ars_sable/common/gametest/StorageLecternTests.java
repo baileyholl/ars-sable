@@ -93,7 +93,7 @@ public class StorageLecternTests {
         TrackedWorldPositionBlockEntity trackedB = (TrackedWorldPositionBlockEntity) ownerB;
 
         ownerA.onFinishedConnectionLast(oldTargetWorld, Direction.UP, null, ANFakePlayer.getPlayer(level));
-        helper.assertTrue(data.getEntry(trackedA.ars_sable$getTrackingId()) == null, "Wiped lectern kept tracked entry");
+        helper.assertTrue(data.getBlockEntityPos(trackedA.ars_sable$getTrackingId()) == null, "Wiped lectern kept tracked entry");
         helper.assertTrue(data.getTrackedPositions(trackedB.ars_sable$getTrackingId()).contains(oldTargetWorld), "Other lectern lost shared target tracking");
 
         SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
@@ -125,7 +125,7 @@ public class StorageLecternTests {
         TrackedWorldPositionBlockEntity trackedB = (TrackedWorldPositionBlockEntity) ownerB;
 
         helper.setBlock(ownerAPos, Blocks.AIR);
-        helper.assertTrue(data.getEntry(trackedA.ars_sable$getTrackingId()) == null, "Broken lectern kept tracked entry");
+        helper.assertTrue(data.getBlockEntityPos(trackedA.ars_sable$getTrackingId()) == null, "Broken lectern kept tracked entry");
         helper.assertTrue(data.getTrackedPositions(trackedA.ars_sable$getTrackingId()).isEmpty(), "Broken lectern kept tracked positions");
         helper.assertTrue(data.getTrackedPositions(trackedB.ars_sable$getTrackingId()).contains(oldTargetWorld), "Other lectern lost shared target tracking");
 
@@ -149,12 +149,12 @@ public class StorageLecternTests {
 
         TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
         TrackedWorldPositionBlockEntity trackedOwner = (TrackedWorldPositionBlockEntity) owner;
-        helper.assertTrue(data.getEntry(trackedOwner.ars_sable$getTrackingId()) != null, "Expected tracked lectern entry before break");
+        helper.assertTrue(data.getBlockEntityPos(trackedOwner.ars_sable$getTrackingId()) != null, "Expected tracked lectern entry before break");
         helper.assertTrue(data.getTrackedPositions(trackedOwner.ars_sable$getTrackingId()).contains(targetWorld), "Expected tracked connection before break");
 
         helper.setBlock(ownerPos, Blocks.AIR);
 
-        helper.assertTrue(data.getEntry(trackedOwner.ars_sable$getTrackingId()) == null, "Broken lectern kept tracked entry");
+        helper.assertTrue(data.getBlockEntityPos(trackedOwner.ars_sable$getTrackingId()) == null, "Broken lectern kept tracked entry");
         helper.assertTrue(data.getTrackedPositions(trackedOwner.ars_sable$getTrackingId()).isEmpty(), "Broken lectern kept tracked positions");
         helper.succeed();
     }
@@ -178,13 +178,13 @@ public class StorageLecternTests {
 
         owner.onFinishedConnectionLast(oldTargetWorld, Direction.UP, null, ANFakePlayer.getPlayer(level));
         helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Dominion wand wipe kept handler target");
-        helper.assertTrue(data.getEntry(trackedOwner.ars_sable$getTrackingId()) == null, "Wiped lectern kept tracked entry");
+        helper.assertTrue(data.getBlockEntityPos(trackedOwner.ars_sable$getTrackingId()) == null, "Wiped lectern kept tracked entry");
         helper.assertTrue(data.getTrackedPositions(trackedOwner.ars_sable$getTrackingId()).isEmpty(), "Wiped lectern kept tracked positions");
 
         SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
 
         helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Former target was tracked after wipe");
-        helper.assertTrue(data.getEntry(trackedOwner.ars_sable$getTrackingId()) == null, "Former target move recreated tracked entry");
+        helper.assertTrue(data.getBlockEntityPos(trackedOwner.ars_sable$getTrackingId()) == null, "Former target move recreated tracked entry");
         helper.succeed();
     }
 
