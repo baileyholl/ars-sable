@@ -39,9 +39,7 @@ public class PlanariumHelpers {
         if (!(tile.getLevel() instanceof ServerLevel serverLevel)) {
             return;
         }
-        // Always track the floor block the entity stood on, whether or not it is currently on a
-        // sublevel, so the block can be followed as it is assembled into and out of sublevels while
-        // the player is inside. Mirrors WarpSableHelper#bindPosition.
+        
         SubLevelAccess entitySublevel = SableCompanion.INSTANCE.getTrackingOrVehicleSubLevel(entity);
         if (entitySublevel == null) {
             entitySublevel = SableCompanion.INSTANCE.getLastTrackingSubLevel(entity);
