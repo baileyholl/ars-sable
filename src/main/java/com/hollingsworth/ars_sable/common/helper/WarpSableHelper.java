@@ -29,6 +29,14 @@ public class WarpSableHelper {
         GlobalPos key = GlobalPos.of(level.dimension(), targetPos);
         WarpSublevelTargetData targetData = WarpSublevelTargetData.from(serverLevel);
         Target target = targetData.get(key);
+        if (target != null && target.restorePos().isPresent()) {
+            // The target's sublevel is unavailable
+            GlobalPos restorePos = target.restorePos().get();
+            if (restorePos.dimension().equals(level.dimension())) {
+                BlockPos snapshot = restorePos.pos();
+                return new Vec3(snapshot.getX() + 0.5D, snapshot.getY(), snapshot.getZ() + 0.5D);
+            }
+        }
         GlobalPos trackedTarget = target == null ? null : target.pos();
         boolean placeAbove = target != null && target.placeAbove();
 
@@ -49,8 +57,8 @@ public class WarpSableHelper {
         if (targetSubLevel == null) {
             return new Vec3(x, placeAbove ? y + 1.0D : y, z);
         }
-        Vector3d projected = SableCompanion.INSTANCE.projectOutOfSubLevel(level, new Vector3d(x, y, z), new Vector3d());
-        return new Vec3(projected.x(), adjustedY(level, placeAbove ? targetPos.above() : targetPos), projected.z());
+        Vector3d projected = SableProjectionHelper.projectOut(level, x, y, z);
+        return new Vec3(projected.x(), SableProjectionHelper.projectedTopY(level, placeAbove ? targetPos.above() : targetPos), projected.z());
     }
 
     public static void trackWarpTarget(ServerLevel serverLevel, GlobalPos target) {
@@ -58,7 +66,7 @@ public class WarpSableHelper {
         if (targetData.get(target) != null) {
             return;
         }
-        targetData.put(target, target);
+        targetData.put(serverLevel, target, target);
     }
 
     public static BlockPos bindPosition(Player player, BlockPos original) {
@@ -70,16 +78,20 @@ public class WarpSableHelper {
         if (subLevel == null) {
             subLevel = SableCompanion.INSTANCE.getLastTrackingSubLevel(player);
         }
-        if (subLevel == null) {
-            return original;
+        BlockPos localPos;
+        BlockPos fallbackPos;
+        if (subLevel != null) {
+            localPos = BlockPos.containing(subLevel.logicalPose().transformPositionInverse(player.position())).below();
+            fallbackPos = BlockPos.containing(SableCompanion.INSTANCE.projectOutOfSubLevel(serverLevel, localPos.getCenter()));
+        } else {
+            localPos = original.below();
+            fallbackPos = localPos;
         }
-
-        BlockPos localPos = BlockPos.containing(subLevel.logicalPose().transformPositionInverse(player.position())).below();
-        Vec3 fallbackPos = SableCompanion.INSTANCE.projectOutOfSubLevel(serverLevel, localPos.getCenter());
         WarpSublevelTargetData.from(serverLevel).put(
-                GlobalPos.of(serverLevel.dimension(), localPos.immutable()),
-                GlobalPos.of(serverLevel.dimension(), localPos.immutable()),
-                GlobalPos.of(serverLevel.dimension(), BlockPos.containing(fallbackPos)),
+                serverLevel,
+                GlobalPos.of(serverLevel.dimension(), localPos),
+                GlobalPos.of(serverLevel.dimension(), localPos),
+                GlobalPos.of(serverLevel.dimension(), fallbackPos),
                 true
         );
         return localPos;
@@ -94,19 +106,5 @@ public class WarpSableHelper {
             }
         }
         return original;
-    }
-
-    private static double adjustedY(Level level, BlockPos localSpawnPos) {
-        double x = localSpawnPos.getX();
-        double y = localSpawnPos.getY();
-        double z = localSpawnPos.getZ();
-        return Math.ceil(Math.max(
-                Math.max(projectedY(level, x, y, z), projectedY(level, x + 1.0D, y, z)),
-                Math.max(projectedY(level, x, y, z + 1.0D), projectedY(level, x + 1.0D, y, z + 1.0D))
-        ));
-    }
-
-    private static double projectedY(Level level, double x, double y, double z) {
-        return SableCompanion.INSTANCE.projectOutOfSubLevel(level, new Vector3d(x, y, z), new Vector3d()).y();
     }
 }

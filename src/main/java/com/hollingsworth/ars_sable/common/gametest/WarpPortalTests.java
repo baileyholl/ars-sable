@@ -2,6 +2,8 @@ package com.hollingsworth.ars_sable.common.gametest;
 
 import com.hollingsworth.ars_sable.ArsSable;
 import com.hollingsworth.ars_sable.common.WarpSublevelTargetData;
+import com.hollingsworth.ars_sable.common.helper.SableProjectionHelper;
+import com.hollingsworth.ars_sable.common.helper.WarpSableHelper;
 import com.hollingsworth.arsnouveau.common.block.tile.PortalTile;
 import com.hollingsworth.arsnouveau.common.items.data.WarpScrollData;
 import com.hollingsworth.arsnouveau.setup.registry.BlockRegistry;
@@ -16,6 +18,8 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.phys.Vec2;
@@ -128,6 +132,7 @@ public class WarpPortalTests {
 
         helper.setBlock(sublevelTarget, Blocks.CHEST);
         WarpSublevelTargetData.from(level).put(
+                level,
                 GlobalPos.of(level.dimension(), sublevelTargetWorld),
                 GlobalPos.of(level.dimension(), sublevelTargetWorld),
                 GlobalPos.of(level.dimension(), fallbackTargetWorld)
@@ -158,6 +163,7 @@ public class WarpPortalTests {
 
         helper.setBlock(sublevelTarget, Blocks.CHEST);
         WarpSublevelTargetData.from(level).put(
+                level,
                 GlobalPos.of(level.dimension(), sublevelTargetWorld),
                 GlobalPos.of(level.dimension(), sublevelTargetWorld),
                 GlobalPos.of(level.dimension(), fallbackTargetWorld)
@@ -190,6 +196,7 @@ public class WarpPortalTests {
         BlockPos firstSublevelTarget = firstSubLevel.getPlot().getCenterBlock();
         Vec3 firstProjectedTarget = SableCompanion.INSTANCE.projectOutOfSubLevel(level, firstSublevelTarget.getCenter());
         WarpSublevelTargetData.from(level).put(
+                level,
                 GlobalPos.of(level.dimension(), firstSublevelTarget),
                 GlobalPos.of(level.dimension(), firstSublevelTarget),
                 GlobalPos.of(level.dimension(), BlockPos.containing(firstProjectedTarget)),
@@ -211,6 +218,135 @@ public class WarpPortalTests {
         Entity afterReassembly = helper.spawn(EntityType.ARMOR_STAND, new BlockPos(1, 1, 8));
         PortalTile.teleportEntityTo(afterReassembly, level, portal.warpPos, portal.rotationVec);
         helper.assertTrue(afterReassembly.blockPosition().equals(expectedSecondTarget), "Expected reassembled sublevel target " + expectedSecondTarget + ", actual=" + afterReassembly.blockPosition());
+        helper.succeed();
+    }
+
+    @GameTest(template = StorageLecternTests.TEMPLATE_EMPTY)
+    public static void portalTargetUsesSnapshotWhileSublevelUnloaded(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos portalPos = new BlockPos(2, 1, 4);
+        BlockPos originalTarget = helper.absolutePos(new BlockPos(4, 1, 4));
+
+        helper.setBlock(portalPos, BlockRegistry.PORTAL_BLOCK.get().defaultBlockState());
+        level.setBlock(originalTarget, Blocks.CHEST.defaultBlockState(), 3);
+
+        ServerSubLevel subLevel = SubLevelAssemblyHelper.assembleBlocks(level, originalTarget, List.of(originalTarget), bounds(originalTarget));
+        BlockPos sublevelTarget = subLevel.getPlot().getCenterBlock();
+        WarpSublevelTargetData data = WarpSublevelTargetData.from(level);
+        data.put(
+                level,
+                GlobalPos.of(level.dimension(), sublevelTarget),
+                GlobalPos.of(level.dimension(), sublevelTarget),
+                GlobalPos.of(level.dimension(), originalTarget),
+                true
+        );
+
+        PortalTile portal = helper.getBlockEntity(portalPos);
+        portal.setFromScroll(new WarpScrollData(Optional.of(sublevelTarget), level.dimension().location().toString(), Vec2.ZERO, false));
+
+        BlockPos expectedSnapshot = SableProjectionHelper.projectStandingPos(level, sublevelTarget);
+        data.setSublevelLoaded(level, subLevel.getUniqueId(), false);
+
+        Entity whileUnloaded = helper.spawn(EntityType.ARMOR_STAND, new BlockPos(1, 1, 4));
+        PortalTile.teleportEntityTo(whileUnloaded, level, portal.warpPos, portal.rotationVec);
+        helper.assertTrue(whileUnloaded.blockPosition().equals(expectedSnapshot), "Expected unloaded snapshot target " + expectedSnapshot + ", actual=" + whileUnloaded.blockPosition());
+
+        data.setSublevelLoaded(level, subLevel.getUniqueId(), true);
+        Entity afterReload = helper.spawn(EntityType.ARMOR_STAND, new BlockPos(1, 1, 4));
+        PortalTile.teleportEntityTo(afterReload, level, portal.warpPos, portal.rotationVec);
+        helper.assertTrue(afterReload.blockPosition().equals(expectedSnapshot), "Expected reloaded projected target " + expectedSnapshot + ", actual=" + afterReload.blockPosition());
+        helper.succeed();
+    }
+
+    @GameTest(template = StorageLecternTests.TEMPLATE_EMPTY)
+    public static void portalTargetRestoredWhenSublevelRemoved(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos portalPos = new BlockPos(2, 1, 6);
+        BlockPos originalTarget = helper.absolutePos(new BlockPos(4, 1, 6));
+
+        helper.setBlock(portalPos, BlockRegistry.PORTAL_BLOCK.get().defaultBlockState());
+        level.setBlock(originalTarget, Blocks.CHEST.defaultBlockState(), 3);
+
+        ServerSubLevel subLevel = SubLevelAssemblyHelper.assembleBlocks(level, originalTarget, List.of(originalTarget), bounds(originalTarget));
+        BlockPos sublevelTarget = subLevel.getPlot().getCenterBlock();
+        WarpSublevelTargetData data = WarpSublevelTargetData.from(level);
+        data.put(
+                level,
+                GlobalPos.of(level.dimension(), sublevelTarget),
+                GlobalPos.of(level.dimension(), sublevelTarget),
+                GlobalPos.of(level.dimension(), originalTarget),
+                true
+        );
+
+        PortalTile portal = helper.getBlockEntity(portalPos);
+        portal.setFromScroll(new WarpScrollData(Optional.of(sublevelTarget), level.dimension().location().toString(), Vec2.ZERO, false));
+
+        BlockPos expectedRestore = SableProjectionHelper.projectStandingPos(level, sublevelTarget);
+        data.removeSublevel(level, subLevel.getUniqueId());
+
+        Entity afterRemoval = helper.spawn(EntityType.ARMOR_STAND, new BlockPos(1, 1, 6));
+        PortalTile.teleportEntityTo(afterRemoval, level, portal.warpPos, portal.rotationVec);
+        helper.assertTrue(afterRemoval.blockPosition().equals(expectedRestore), "Expected removal restore target " + expectedRestore + ", actual=" + afterRemoval.blockPosition());
+        helper.succeed();
+    }
+
+    @GameTest(template = StorageLecternTests.TEMPLATE_EMPTY)
+    public static void portalBoundToWorldTargetTracksIntoSublevel(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos portalPos = new BlockPos(2, 1, 2);
+        BlockPos originalTarget = helper.absolutePos(new BlockPos(4, 1, 2));
+
+        helper.setBlock(portalPos, BlockRegistry.PORTAL_BLOCK.get().defaultBlockState());
+        level.setBlock(originalTarget, Blocks.CHEST.defaultBlockState(), 3);
+
+        WarpSublevelTargetData data = WarpSublevelTargetData.from(level);
+        data.put(
+                level,
+                GlobalPos.of(level.dimension(), originalTarget),
+                GlobalPos.of(level.dimension(), originalTarget),
+                GlobalPos.of(level.dimension(), originalTarget),
+                true
+        );
+
+        PortalTile portal = helper.getBlockEntity(portalPos);
+        portal.setFromScroll(new WarpScrollData(Optional.of(originalTarget), level.dimension().location().toString(), Vec2.ZERO, false));
+
+        ServerSubLevel subLevel = SubLevelAssemblyHelper.assembleBlocks(level, originalTarget, List.of(originalTarget), bounds(originalTarget));
+        BlockPos sublevelTarget = subLevel.getPlot().getCenterBlock();
+
+        WarpSublevelTargetData.Target tracked = data.get(GlobalPos.of(level.dimension(), originalTarget));
+        helper.assertTrue(tracked != null && tracked.pos().pos().equals(sublevelTarget), "Expected tracked target to follow assembly to " + sublevelTarget + ", actual=" + (tracked == null ? null : tracked.pos().pos()));
+        helper.assertTrue(tracked.sublevelId().isPresent() && tracked.sublevelId().get().equals(subLevel.getUniqueId()), "Expected tracked target to record containing sublevel id");
+
+        BlockPos expected = SableProjectionHelper.projectTargetPos(level, sublevelTarget, true);
+        Entity entity = helper.spawn(EntityType.ARMOR_STAND, new BlockPos(1, 1, 2));
+        PortalTile.teleportEntityTo(entity, level, portal.warpPos, portal.rotationVec);
+        helper.assertTrue(entity.blockPosition().equals(expected), "Expected assembled sublevel target " + expected + ", actual=" + entity.blockPosition());
+        helper.succeed();
+    }
+
+    @GameTest(template = StorageLecternTests.TEMPLATE_EMPTY)
+    public static void scrollBoundInWorldTracksTargetIntoSublevel(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos standPos = helper.absolutePos(new BlockPos(4, 2, 4));
+        BlockPos floorPos = standPos.below();
+        level.setBlock(floorPos, Blocks.CHEST.defaultBlockState(), 3);
+
+        Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        BlockPos bound = WarpSableHelper.bindPosition(player, standPos);
+        helper.assertTrue(bound.equals(floorPos), "Expected world bind to track floor block " + floorPos + ", actual=" + bound);
+        helper.assertTrue(WarpSublevelTargetData.from(level).get(GlobalPos.of(level.dimension(), bound)) != null, "Expected world bind to create a tracked warp target");
+
+        // Binding in the real world without any sublevel involvement still resolves to the stand position.
+        Vec3 beforeAssembly = WarpSableHelper.project(level, bound);
+        helper.assertTrue(BlockPos.containing(beforeAssembly).equals(standPos), "Expected unmoved bind to resolve to " + standPos + ", actual=" + BlockPos.containing(beforeAssembly));
+
+        ServerSubLevel subLevel = SubLevelAssemblyHelper.assembleBlocks(level, floorPos, List.of(floorPos), bounds(floorPos));
+        BlockPos sublevelTarget = subLevel.getPlot().getCenterBlock();
+
+        BlockPos expected = SableProjectionHelper.projectTargetPos(level, sublevelTarget, true);
+        Vec3 afterAssembly = WarpSableHelper.project(level, bound);
+        helper.assertTrue(BlockPos.containing(afterAssembly).equals(expected), "Expected assembled bind to resolve to " + expected + ", actual=" + BlockPos.containing(afterAssembly));
         helper.succeed();
     }
 

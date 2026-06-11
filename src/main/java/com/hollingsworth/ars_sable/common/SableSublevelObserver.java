@@ -11,6 +11,7 @@ public class SableSublevelObserver implements SubLevelObserver {
         SubLevelObserver.super.onSubLevelAdded(subLevel);
         if (subLevel.getLevel() instanceof ServerLevel serverLevel) {
             SublevelPosData.from(serverLevel).setSublevelLoaded(serverLevel, subLevel.getUniqueId(), true);
+            WarpSublevelTargetData.from(serverLevel).setSublevelLoaded(serverLevel, subLevel.getUniqueId(), true);
         }
     }
 
@@ -20,8 +21,10 @@ public class SableSublevelObserver implements SubLevelObserver {
         if (subLevel.getLevel() instanceof ServerLevel serverLevel) {
             if (reason == SubLevelRemovalReason.REMOVED) {
                 SublevelPosData.from(serverLevel).removeSublevel(serverLevel, subLevel.getUniqueId());
+                WarpSublevelTargetData.from(serverLevel).removeSublevel(serverLevel, subLevel.getUniqueId());
             } else if (reason == SubLevelRemovalReason.UNLOADED) {
                 SublevelPosData.from(serverLevel).setSublevelLoaded(serverLevel, subLevel.getUniqueId(), false);
+                WarpSublevelTargetData.from(serverLevel).setSublevelLoaded(serverLevel, subLevel.getUniqueId(), false);
             }
         }
     }
