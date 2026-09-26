@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_17",
   "mixins": [
     "sable.SubLevelAssemblyHelperMixin",
+    "camera.EntitySubLevelRotationHelperMixin",
     "camera.ICameraMountableMixin",
     "camera.ScryerCameraMixin",
     "camera.SubLevelTrackingSystemMixin",
