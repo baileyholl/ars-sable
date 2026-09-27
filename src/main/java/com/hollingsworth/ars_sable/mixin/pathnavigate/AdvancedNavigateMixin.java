@@ -20,4 +20,9 @@ public class AdvancedNavigateMixin {
     public PathResult as$moveToXYZ(double x, double y, double z, double speedFactor, Operation<PathResult> original) {
         return PathNavigateHelpers.moveToXYZ((MinecoloniesAdvancedPathNavigate)(Object)this, x, y, z, speedFactor, original);
     }
+
+    @WrapMethod(method = "moveAwayFromXYZ")
+    public PathResult as$moveAwayFromXYZ(BlockPos avoid, double range, double speedFactor, boolean safeDestination, Operation<PathResult> original) {
+        return PathNavigateHelpers.moveAwayFromXYZ((MinecoloniesAdvancedPathNavigate)(Object)this, avoid, range, speedFactor, safeDestination, original);
+    }
 }

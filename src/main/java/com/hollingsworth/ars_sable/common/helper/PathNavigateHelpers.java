@@ -31,11 +31,24 @@ public class PathNavigateHelpers {
     public static PathResult moveToXYZ(MinecoloniesAdvancedPathNavigate self, double x, double y, double z, double speedFactor, Operation<PathResult> original) {
         BlockPos start = AbstractPathJob.prepareStart(self.getOurEntity());
         BlockPos target = adjustPathTarget(self.getOurEntity(), BlockPos.containing(x, y, z), start);
-        int range = (int) self.getOurEntity().getAttribute(Attributes.FOLLOW_RANGE).getValue();
-        if (Math.abs(start.getX() - target.getX()) > 1024 + range || Math.abs(start.getZ() - target.getZ()) > 1024 + range) {
+        if (isTooFar(self, start, target)) {
             return null;
         }
         return original.call((double) target.getX(), (double) target.getY(), (double) target.getZ(), speedFactor);
+    }
+
+    public static PathResult moveAwayFromXYZ(MinecoloniesAdvancedPathNavigate self, BlockPos avoid, double range, double speedFactor, boolean safeDestination, Operation<PathResult> original) {
+        BlockPos start = AbstractPathJob.prepareStart(self.getOurEntity());
+        BlockPos localAvoid = adjustPathTarget(self.getOurEntity(), avoid, start);
+        if (isTooFar(self, start, localAvoid)) {
+            localAvoid = start;
+        }
+        return original.call(localAvoid, range, speedFactor, safeDestination);
+    }
+
+    private static boolean isTooFar(MinecoloniesAdvancedPathNavigate self, BlockPos start, BlockPos target) {
+        int range = (int) self.getOurEntity().getAttribute(Attributes.FOLLOW_RANGE).getValue();
+        return Math.abs(start.getX() - target.getX()) > 1024 + range || Math.abs(start.getZ() - target.getZ()) > 1024 + range;
     }
 
     public static Vec3 projectTarget(Level level, double x, double y, double z) {
