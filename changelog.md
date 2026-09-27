@@ -1,5 +1,3 @@
 # Changelog
 
-Make planariums persist bound connections between sublevel assembly
-
-Fix warp portals and scrolls sending to incorrect location when the sublevel is unloaded
+Fix sublevel rotation not applying when looking through an attached scryer camera

@@ -17,7 +17,7 @@ import java.util.function.Function;
 
 @Mixin(value = EntitySubLevelRotationHelper.class, remap = false)
 public class EntitySubLevelRotationHelperMixin {
-    
+
     @Inject(method = "getSubLevelInheritedOrientation", at = @At("HEAD"), cancellable = true, remap = false)
     private static void ars_sable$scryerCameraOrientation(Entity cameraEntity, Function<SubLevel, Pose3dc> poseProvider, EntitySubLevelRotationHelper.Type type, CallbackInfoReturnable<Quaterniond> cir) {
         if (!(cameraEntity instanceof ScryerCamera)) {
