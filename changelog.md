@@ -1,3 +1,5 @@
 # Changelog
 
-Fix sublevel rotation not applying when looking through an attached scryer camera
+Fix crash with forceloaded sublevels 
+
+Fix crash when starbuncles get stuck near sublevels
