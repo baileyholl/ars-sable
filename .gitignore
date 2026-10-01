@@ -27,3 +27,6 @@ forge*changelog.txt
 /runs/
 /server/
 /.cocoindex_code/
+
+# Datagen cache
+/src/generated/resources/.cache/

@@ -16,10 +16,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import javax.annotation.Nullable;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 
 public class WarpSublevelTargetData extends SavedData {
     // Bound sublevel target -> current target, fallback target, and warp placement mode.
@@ -82,6 +86,35 @@ public class WarpSublevelTargetData extends SavedData {
             targets.put(key, currentTarget.withPos(newTarget).withSublevelId(newSublevelId));
             return true;
         });
+    }
+
+    public Set<GlobalPos> keysOnSublevel(UUID sublevelId) {
+        return new HashSet<>(sublevelToKeys.get(sublevelId));
+    }
+
+    public void handleSublevelRestored(ServerLevel level, Collection<GlobalPos> keys, Function<GlobalPos, BlockPos> move) {
+        boolean changed = false;
+        for (GlobalPos key : keys) {
+            Target currentTarget = targets.get(key);
+            if (currentTarget == null || currentTarget.restorePos().isEmpty()) {
+                continue;
+            }
+            BlockPos newPos = move.apply(currentTarget.pos());
+            if (newPos == null) {
+                continue;
+            }
+            GlobalPos newTarget = GlobalPos.of(level.dimension(), newPos);
+            Optional<UUID> newSublevelId = containingSublevelId(level, newPos);
+            targetToKeys.remove(currentTarget.pos(), key);
+            targetToKeys.add(newTarget, key);
+            currentTarget.sublevelId().ifPresent(id -> sublevelToKeys.remove(id, key));
+            newSublevelId.ifPresent(id -> sublevelToKeys.add(id, key));
+            targets.put(key, currentTarget.withPos(newTarget).withSublevelId(newSublevelId).withRestorePos(Optional.empty()));
+            changed = true;
+        }
+        if (changed) {
+            setDirty();
+        }
     }
 
     public void setSublevelLoaded(ServerLevel serverLevel, UUID sublevelId, boolean isLoaded) {

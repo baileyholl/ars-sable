@@ -22,9 +22,11 @@ import net.minecraft.world.phys.Vec2;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 
 public class SublevelPosData extends SavedData {
     // Player -> the floor block they stood on when entering the planarium
@@ -95,6 +97,23 @@ public class SublevelPosData extends SavedData {
         });
     }
 
+    public void handleSublevelRestored(ServerLevel level, UUID oldSublevelId, Function<GlobalPos, BlockPos> move) {
+        for (UUID playerId : List.copyOf(sublevelToPlayers.get(oldSublevelId))) {
+            Entry entry = entries.get(playerId);
+            BlockPos newPos = entry == null ? null : move.apply(entry.trackedPos());
+            if (newPos == null) {
+                continue;
+            }
+            GlobalPos newTracked = GlobalPos.of(level.dimension(), newPos);
+            Optional<UUID> newSublevelId = containingSublevelId(level, newPos);
+            trackedPosToPlayers.remove(entry.trackedPos(), playerId);
+            trackedPosToPlayers.add(newTracked, playerId);
+            sublevelToPlayers.remove(oldSublevelId, playerId);
+            newSublevelId.ifPresent(id -> sublevelToPlayers.add(id, playerId));
+            entries.put(playerId, entry.withTrackedPos(newTracked).withSublevelId(newSublevelId).withRestorePos(Optional.empty()));
+        }
+    }
+
     public void setSublevelLoaded(ServerLevel serverLevel, UUID sublevelId, boolean isLoaded) {
         for (UUID playerId : sublevelToPlayers.get(sublevelId)) {
             Entry entry = entries.get(playerId);
@@ -110,15 +129,16 @@ public class SublevelPosData extends SavedData {
         }
     }
 
+    // Keeps the sublevel id so a miniaturized sublevel can re-attach these entries when it is placed back.
     public void removeSublevel(ServerLevel serverLevel, UUID sublevelId) {
-        for (UUID playerId : sublevelToPlayers.removeAll(sublevelId)) {
+        for (UUID playerId : sublevelToPlayers.get(sublevelId)) {
             Entry entry = entries.get(playerId);
             if (entry == null) {
                 continue;
             }
             Optional<GlobalPos> restorePos = entry.restorePos().or(() ->
                     Optional.of(GlobalPos.of(entry.trackedPos().dimension(), SableProjectionHelper.projectStandingPos(serverLevel, entry.trackedPos().pos()))));
-            entries.put(playerId, entry.withSublevelId(Optional.empty()).withRestorePos(restorePos));
+            entries.put(playerId, entry.withRestorePos(restorePos));
         }
     }
 

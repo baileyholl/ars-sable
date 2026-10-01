@@ -1,0 +1,10 @@
+{
+  "ars_sable.glyph_desc.glyph_miniaturize": "Converts a targeted sublevel into an item that can be placed in the world.",
+  "ars_sable.glyph_name.glyph_miniaturize": "Miniaturize",
+  "ars_sable.miniature_sublevel.blocks": "Blocks: %s",
+  "ars_sable.miniature_sublevel.size": "Size: %sx%sx%s",
+  "ars_sable.miniaturize.failed": "Failed to place.",
+  "ars_sable.miniaturize.missing": "This miniature sublevel no longer exists.",
+  "ars_sable.miniaturize.no_space": "Not enough space to place.",
+  "item.ars_sable.miniature_sublevel": "Miniature Sublevel"
+}

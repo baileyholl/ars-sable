@@ -22,6 +22,8 @@ public class ACNetworking {
 
     public static void register(final RegisterPayloadHandlersEvent event){
         final PayloadRegistrar reg = event.registrar("2");
+        reg.playToServer(PacketRequestMiniatureSublevel.TYPE, PacketRequestMiniatureSublevel.CODEC, ACNetworking::handle);
+        reg.playToClient(PacketMiniatureSublevelTemplate.TYPE, PacketMiniatureSublevelTemplate.CODEC, ACNetworking::handle);
     }
 
     public static <T extends AbstractPacket> void handle(T message, IPayloadContext ctx) {
