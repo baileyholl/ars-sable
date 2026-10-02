@@ -14,6 +14,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import javax.annotation.Nullable;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,10 @@ public class MiniatureSublevelStore extends SavedData {
 
     public @Nullable Entry get(UUID id) {
         return entries.get(id);
+    }
+
+    public Map<UUID, Entry> getEntries() {
+        return Collections.unmodifiableMap(entries);
     }
 
     public void remove(UUID id) {
@@ -63,7 +68,7 @@ public class MiniatureSublevelStore extends SavedData {
     }
 
     public record Entry(CompoundTag template, List<CompoundTag> entities, ResourceKey<Level> dimension, BlockPos origin,
-                        Optional<String> name, Optional<CompoundTag> userData,
+                        Optional<String> name, Optional<CompoundTag> userData, Optional<UUID> owner,
                         Set<GlobalPos> warpKeys, Set<UUID> referencingIds) {
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 CompoundTag.CODEC.fieldOf("template").forGetter(Entry::template),
@@ -72,6 +77,7 @@ public class MiniatureSublevelStore extends SavedData {
                 BlockPos.CODEC.fieldOf("origin").forGetter(Entry::origin),
                 Codec.STRING.optionalFieldOf("name").forGetter(Entry::name),
                 CompoundTag.CODEC.optionalFieldOf("user_data").forGetter(Entry::userData),
+                UUIDUtil.CODEC.optionalFieldOf("owner").forGetter(Entry::owner),
                 GlobalPos.CODEC.listOf().<Set<GlobalPos>>xmap(Set::copyOf, List::copyOf).fieldOf("warp_keys").forGetter(Entry::warpKeys),
                 UUIDUtil.CODEC_SET.fieldOf("referencing_ids").forGetter(Entry::referencingIds)
         ).apply(instance, Entry::new));

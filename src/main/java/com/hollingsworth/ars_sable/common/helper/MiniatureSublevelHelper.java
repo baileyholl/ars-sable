@@ -55,6 +55,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
+import net.neoforged.neoforge.common.util.FakePlayer;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
 
@@ -100,15 +101,22 @@ public class MiniatureSublevelHelper {
         UUID sublevelId = subLevel.getUniqueId();
         TrackedBlockEntityPosData trackedData = TrackedBlockEntityPosData.from(level);
         trackedData.removeOwnedWithin(bounds);
+        Optional<UUID> owner = caster instanceof Player && !(caster instanceof FakePlayer) ? Optional.of(caster.getUUID()) : Optional.empty();
         MiniatureSublevelStore.Entry entry = new MiniatureSublevelStore.Entry(template.save(new CompoundTag()), saveEntities(level, subLevel, bounds),
-                level.dimension(), origin, Optional.ofNullable(subLevel.getName()), Optional.ofNullable(subLevel.getUserDataTag()),
+                level.dimension(), origin, Optional.ofNullable(subLevel.getName()), Optional.ofNullable(subLevel.getUserDataTag()), owner,
                 WarpSublevelTargetData.from(level).keysOnSublevel(sublevelId), trackedData.referencingIdsWithin(bounds));
 
         container.removeSubLevel(subLevel, SubLevelRemovalReason.REMOVED);
 
         MiniatureSublevelStore.from(level).put(sublevelId, entry);
+        return createItem(level, sublevelId, entry);
+    }
+
+    public static ItemStack createItem(ServerLevel level, UUID id, MiniatureSublevelStore.Entry entry) {
+        StructureTemplate template = new StructureTemplate();
+        template.load(level.holderLookup(Registries.BLOCK), entry.template());
         ItemStack stack = new ItemStack(ModBlockRegistry.MINIATURE_SUBLEVEL.get());
-        stack.set(DataComponentRegistry.MINIATURE_SUBLEVEL, new MiniatureSublevelData(sublevelId, blocks.size(), size));
+        stack.set(DataComponentRegistry.MINIATURE_SUBLEVEL, new MiniatureSublevelData(id, getBlocks(template).size(), template.getSize()));
         return stack;
     }
 

@@ -38,5 +38,11 @@ public class LangDatagen extends LanguageProvider {
         add("ars_sable.miniaturize.missing", "This miniature sublevel no longer exists.");
         add("ars_sable.miniaturize.failed", "Failed to place.");
         add("ars_sable.miniaturize.no_space", "Not enough space to place.");
+        add("ars_sable.command.miniature.none", "No miniature sublevels are stored.");
+        add("ars_sable.command.miniature.list", "Stored miniature sublevels (%s):");
+        add("ars_sable.command.miniature.entry", "%s by %s - Blocks: %s, Size: %sx%sx%s, Dimension: %s");
+        add("ars_sable.command.miniature.unknown_owner", "Unknown");
+        add("ars_sable.command.miniature.give", "Gave miniature sublevel %s to %s");
+        add("ars_sable.command.miniature.not_found", "No miniature sublevel is stored with that id.");
     }
 }
