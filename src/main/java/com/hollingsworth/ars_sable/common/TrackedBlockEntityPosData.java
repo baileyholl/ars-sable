@@ -1,6 +1,7 @@
 package com.hollingsworth.ars_sable.common;
 
 import com.hollingsworth.ars_sable.common.sable.TrackedWorldPositionBlockEntity;
+import dev.ryanhcode.sable.companion.math.BoundingBox3ic;
 import com.hollingsworth.arsnouveau.common.util.ANCodecs;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -128,6 +129,21 @@ public class TrackedBlockEntityPosData extends SavedData {
         for (BlockPos trackedPos : removedPositions) {
             trackedPositionToEntries.remove(trackedPos, id);
         }
+    }
+
+    public void removeOwnedWithin(BoundingBox3ic bounds) {
+        List<UUID> owned = blockEntityPosById.entrySet().stream()
+                .filter(entry -> bounds.contains(entry.getValue().getX(), entry.getValue().getY(), entry.getValue().getZ()))
+                .map(Map.Entry::getKey)
+                .toList();
+        owned.forEach(this::remove);
+    }
+
+    public Set<UUID> referencingIdsWithin(BoundingBox3ic bounds) {
+        return trackedPositions.entrySet().stream()
+                .filter(entry -> entry.getValue().stream().anyMatch(pos -> bounds.contains(pos.getX(), pos.getY(), pos.getZ())))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
     }
 
     public void handleBlockMoved(ServerLevel level, BlockPos oldPos, BlockPos newPos) {
