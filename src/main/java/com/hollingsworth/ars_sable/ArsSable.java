@@ -3,6 +3,7 @@ package com.hollingsworth.ars_sable;
 import com.hollingsworth.ars_sable.common.SableSublevelObserver;
 import com.hollingsworth.ars_sable.common.command.MiniatureSublevelCommand;
 import com.hollingsworth.ars_sable.common.datagen.GlyphRecipeDatagen;
+import com.hollingsworth.ars_sable.common.datagen.ItemModelDatagen;
 import com.hollingsworth.ars_sable.common.datagen.LangDatagen;
 import com.hollingsworth.ars_sable.common.registry.CreativeTabRegistry;
 import com.hollingsworth.ars_sable.common.registry.DataComponentRegistry;
@@ -36,6 +37,7 @@ public class ArsSable {
         modBus.addListener(ArsSable::commonSetup);
         modBus.addListener(LangDatagen::gather);
         modBus.addListener(GlyphRecipeDatagen::gather);
+        modBus.addListener(ItemModelDatagen::gather);
         NeoForge.EVENT_BUS.addListener(ArsSable::onSublevelReady);
         NeoForge.EVENT_BUS.addListener(MiniatureSublevelCommand::register);
         registers(modBus);
