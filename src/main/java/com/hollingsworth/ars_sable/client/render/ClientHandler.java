@@ -19,6 +19,7 @@ public class ClientHandler {
         bus.addListener(ClientHandler::registerRenderers);
         bus.addListener(ClientHandler::registerClientExtensions);
         NeoForge.EVENT_BUS.addListener(ClientHandler::onLevelUnload);
+        NeoForge.EVENT_BUS.addListener(MiniatureSublevelPreviewRenderer::render);
     }
 
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
