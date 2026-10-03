@@ -1,5 +1,3 @@
 # Changelog
 
-Fix crash with forceloaded sublevels 
-
-Fix crash when starbuncles get stuck near sublevels
+Adds miniaturize glyph for converting sublevels to items
