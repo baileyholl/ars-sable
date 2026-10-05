@@ -25,6 +25,9 @@ repositories {
         filter {
             includeGroup("dev.ryanhcode.sable")
             includeGroup("dev.ryanhcode.sable-companion")
+            includeGroup("dev.simulated_team.simulated")
+            includeGroup("dev.eriksonn.aeronautics")
+            includeGroup("dev.ryanhcode.offroad")
         }
     }
     maven {
@@ -167,6 +170,9 @@ dependencies {
     implementation("dev.ryanhcode.sable:sable-neoforge-${project.minecraft_version}:${project.sable_version}")
     // Create aeronautics
     implementation "maven.modrinth:oWaK0Q19:Vzp221Un"
+    compileOnly("dev.simulated_team.simulated:simulated-neoforge-${project.minecraft_version}:${project.aeronautics_version}") { transitive = false }
+    compileOnly("dev.eriksonn.aeronautics:aeronautics-neoforge-${project.minecraft_version}:${project.aeronautics_version}") { transitive = false }
+    compileOnly("dev.ryanhcode.offroad:offroad-neoforge-${project.minecraft_version}:${project.aeronautics_version}") { transitive = false }
     implementation "curse.maven:ars-creo-575698:8139067"
 }
 

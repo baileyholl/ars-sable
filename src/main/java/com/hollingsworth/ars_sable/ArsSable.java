@@ -8,9 +8,11 @@ import com.hollingsworth.ars_sable.common.datagen.LangDatagen;
 import com.hollingsworth.ars_sable.common.registry.CreativeTabRegistry;
 import com.hollingsworth.ars_sable.common.registry.DataComponentRegistry;
 import com.hollingsworth.ars_sable.common.registry.ModBlockRegistry;
+import com.hollingsworth.ars_sable.common.ritual.RitualLevitation;
 import com.hollingsworth.ars_sable.common.spell.EffectMiniaturize;
 import com.hollingsworth.ars_sable.network.ACNetworking;
 import com.hollingsworth.arsnouveau.api.registry.GlyphRegistry;
+import com.hollingsworth.arsnouveau.api.registry.RitualRegistry;
 import dev.ryanhcode.sable.neoforge.event.ForgeSableSubLevelContainerReadyEvent;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -30,6 +32,7 @@ public class ArsSable {
 
     public ArsSable(IEventBus modBus, ModContainer modContainer) {
         GlyphRegistry.registerSpell(EffectMiniaturize.INSTANCE);
+        RitualRegistry.registerRitual(new RitualLevitation());
         modContainer.registerConfig(ModConfig.Type.COMMON, ArsSableConfig.SERVER_CONFIG);
         modBus.addListener(ACNetworking::register);
         modBus.addListener(ArsSable::registerEvents);

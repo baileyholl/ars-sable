@@ -21,6 +21,8 @@
     "pathnavigate.BookwyrmTransferGoalMixin",
     "planarium.DimBoundaryMixin",
     "planarium.PlanariumTileMixin",
+    "ritual.AbstractRitualMixin",
+    "ritual.RitualBrazierTileMixin",
     "source_jar.SourceJarMixin",
     "storage.CraftingLecternBlockMixin",
     "storage.StorageLecternTileMixin",
