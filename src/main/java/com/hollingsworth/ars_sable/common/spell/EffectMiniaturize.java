@@ -2,6 +2,7 @@ package com.hollingsworth.ars_sable.common.spell;
 
 import com.hollingsworth.ars_sable.ArsSable;
 import com.hollingsworth.ars_sable.common.helper.MiniatureSublevelHelper;
+import com.hollingsworth.ars_sable.common.helper.SublevelSpellHelper;
 import com.hollingsworth.arsnouveau.api.spell.AbstractAugment;
 import com.hollingsworth.arsnouveau.api.spell.AbstractEffect;
 import com.hollingsworth.arsnouveau.api.spell.SpellContext;
@@ -10,11 +11,7 @@ import com.hollingsworth.arsnouveau.api.spell.SpellSchool;
 import com.hollingsworth.arsnouveau.api.spell.SpellSchools;
 import com.hollingsworth.arsnouveau.api.spell.SpellStats;
 import com.hollingsworth.arsnouveau.api.spell.SpellTier;
-import com.hollingsworth.arsnouveau.common.spell.method.MethodUnderfoot;
-import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
-import dev.ryanhcode.sable.sublevel.SubLevel;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -39,15 +36,11 @@ public class EffectMiniaturize extends AbstractEffect {
         if (!(world instanceof ServerLevel level)) {
             return;
         }
-        BlockPos hitPos = spellContext.getSpell().getCastMethod() instanceof MethodUnderfoot ? shooter.getOnPos() : rayTraceResult.getBlockPos();
-        SubLevel hit = Sable.HELPER.getContaining(level, hitPos);
+        SublevelSpellHelper.SublevelHit hit = SublevelSpellHelper.getSublevelHit(level, rayTraceResult, shooter, spellContext);
         if (hit == null) {
-            hit = Sable.HELPER.runIncludingSubLevels(level, hitPos.getCenter(), false, null,
-                    (SubLevel candidate, BlockPos pos) -> level.getBlockState(pos).isEmpty() ? null : candidate);
-        }
-        if (!(hit instanceof ServerSubLevel subLevel)) {
             return;
         }
+        ServerSubLevel subLevel = hit.subLevel();
         Vector3dc position = subLevel.logicalPose().position();
         ItemStack miniature = MiniatureSublevelHelper.miniaturize(level, subLevel, getPlayer(shooter, level));
         if (miniature.isEmpty()) {

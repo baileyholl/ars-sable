@@ -8,14 +8,16 @@ import com.hollingsworth.ars_sable.common.datagen.LangDatagen;
 import com.hollingsworth.ars_sable.common.registry.CreativeTabRegistry;
 import com.hollingsworth.ars_sable.common.registry.DataComponentRegistry;
 import com.hollingsworth.ars_sable.common.registry.ModBlockRegistry;
-import com.hollingsworth.ars_sable.common.ritual.RitualLevitation;
-import com.hollingsworth.ars_sable.common.spell.EffectMiniaturize;
+import com.hollingsworth.ars_sable.common.registry.SublevelEffectRegistry;
+import com.hollingsworth.ars_sable.common.spell.SublevelTurretProjectileBehavior;
 import com.hollingsworth.ars_sable.network.ACNetworking;
-import com.hollingsworth.arsnouveau.api.registry.GlyphRegistry;
-import com.hollingsworth.arsnouveau.api.registry.RitualRegistry;
+import com.hollingsworth.arsnouveau.common.block.BasicSpellTurret;
+import com.hollingsworth.arsnouveau.common.block.RotatingSpellTurret;
+import com.hollingsworth.arsnouveau.common.spell.method.MethodProjectile;
 import dev.ryanhcode.sable.neoforge.event.ForgeSableSubLevelContainerReadyEvent;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -31,8 +33,7 @@ public class ArsSable {
     public static final String MODID = "ars_sable";
 
     public ArsSable(IEventBus modBus, ModContainer modContainer) {
-        GlyphRegistry.registerSpell(EffectMiniaturize.INSTANCE);
-        RitualRegistry.registerRitual(new RitualLevitation());
+        ArsRegistry.init();
         modContainer.registerConfig(ModConfig.Type.COMMON, ArsSableConfig.SERVER_CONFIG);
         modBus.addListener(ACNetworking::register);
         modBus.addListener(ArsSable::registerEvents);
@@ -42,6 +43,7 @@ public class ArsSable {
         modBus.addListener(GlyphRecipeDatagen::gather);
         modBus.addListener(ItemModelDatagen::gather);
         NeoForge.EVENT_BUS.addListener(ArsSable::onSublevelReady);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, SublevelEffectRegistry::onEffectResolve);
         NeoForge.EVENT_BUS.addListener(MiniatureSublevelCommand::register);
         registers(modBus);
     }
@@ -54,7 +56,7 @@ public class ArsSable {
         DataComponentRegistry.DATA.register(event);
     }
 
-    public static void onSublevelReady(ForgeSableSubLevelContainerReadyEvent ready){
+    public static void onSublevelReady(ForgeSableSubLevelContainerReadyEvent ready) {
         ready.getContainer().addObserver(new SableSublevelObserver());
     }
 
@@ -63,6 +65,10 @@ public class ArsSable {
     }
 
     public static void commonSetup(FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> {
+            BasicSpellTurret.TURRET_BEHAVIOR_MAP.computeIfPresent(MethodProjectile.INSTANCE, (method, original) -> new SublevelTurretProjectileBehavior(original));
+            RotatingSpellTurret.ROT_TURRET_BEHAVIOR_MAP.computeIfPresent(MethodProjectile.INSTANCE, (method, original) -> new SublevelTurretProjectileBehavior(original));
+        });
     }
 
     public static void registerCapability(RegisterCapabilitiesEvent event) {

@@ -14,16 +14,16 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 @Mixin(RotatingTurretTile.class)
 public class RotatingTurretTileMixin {
 
-    @ModifyVariable(method = "aim", at = @At("STORE"), ordinal = 1)
-    private Vec3 ars_sable$aimInTurretFrame(Vec3 target) {
+    @ModifyVariable(method = "aim", at = @At("STORE"), name = "blockVec")
+    private Vec3 ars_sable$aimInTurretFrame(Vec3 blockVec) {
         BlockEntity tile = (BlockEntity) (Object) this;
         BlockPos framePos = tile.getBlockPos();
         Level level = tile.getLevel();
         SubLevel frame = Sable.HELPER.getContaining(level, framePos);
-        if (frame == Sable.HELPER.getContaining(level, target)) {
-            return target;
+        if (frame == Sable.HELPER.getContaining(level, blockVec)) {
+            return blockVec;
         }
-        Vec3 worldPos = Sable.HELPER.projectOutOfSubLevel(level, target);
+        Vec3 worldPos = Sable.HELPER.projectOutOfSubLevel(level, blockVec);
         return frame == null ? worldPos : frame.logicalPose().transformPositionInverse(worldPos);
     }
 }
