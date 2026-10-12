@@ -23,7 +23,7 @@ public abstract class SublevelSpellEffect {
 
     public void buildConfig(ModConfigSpec.Builder builder) {
         BASE = builder.comment("Flat level of force to apply").defineInRange("base", 8.0, 0, Double.MAX_VALUE);
-        AMP = builder.comment("Additional force to apply per amplification level").defineInRange("amp", 4.0, 0, Double.MAX_VALUE);
+        AMP = builder.comment("Additional force to apply per amplification level").defineInRange("amp", 2.0, 0, Double.MAX_VALUE);
     }
 
     public double getImpulse(double ampMultiplier) {

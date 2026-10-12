@@ -2,7 +2,6 @@ package com.hollingsworth.ars_sable.common.registry;
 
 import com.hollingsworth.ars_sable.ArsSable;
 import com.hollingsworth.ars_sable.common.block.ImpulsePrismBlock;
-import com.hollingsworth.ars_sable.common.block.ImpulsePrismTile;
 import com.hollingsworth.ars_sable.common.item.MiniatureSublevelItem;
 import com.hollingsworth.ars_sable.common.lib.LibBlock;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -25,14 +24,13 @@ public class ModBlockRegistry {
 
     public static final DeferredHolder<Block, ImpulsePrismBlock> IMPULSE_PRISM = BLOCK_REG.register(LibBlock.IMPULSE_PRISM, ImpulsePrismBlock::new);
     public static final DeferredHolder<Item, BlockItem> IMPULSE_PRISM_ITEM = ITEMS.register(LibBlock.IMPULSE_PRISM, () -> new BlockItem(IMPULSE_PRISM.get(), new Item.Properties()));
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ImpulsePrismTile>> IMPULSE_PRISM_TILE = BLOCK_ENTITY_REG.register(LibBlock.IMPULSE_PRISM, () -> BlockEntityType.Builder.of(ImpulsePrismTile::new, IMPULSE_PRISM.get()).build(null));
 
 
     public static void onBlockItemsRegistry() {
 
     }
 
-    public static Block.Properties defaultProperties(){
+    public static Block.Properties defaultProperties() {
         return Block.Properties.of().sound(SoundType.STONE).strength(2.0f, 6.0f);
     }
 }
