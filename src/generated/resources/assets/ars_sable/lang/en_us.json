@@ -12,5 +12,7 @@
   "ars_sable.miniaturize.failed": "Failed to place.",
   "ars_sable.miniaturize.missing": "This miniature sublevel no longer exists.",
   "ars_sable.miniaturize.no_space": "Not enough space to place.",
-  "item.ars_sable.miniature_sublevel": "Miniature Sublevel"
+  "ars_sable.ritual_desc.ritual_levitation": "",
+  "item.ars_sable.miniature_sublevel": "Miniature Sublevel",
+  "item.ars_sable.ritual_levitation": "Levitation"
 }
