@@ -3,6 +3,8 @@ package com.hollingsworth.ars_sable.common.datagen;
 import com.hollingsworth.ars_sable.ArsSable;
 import com.hollingsworth.ars_sable.common.registry.ModBlockRegistry;
 import com.hollingsworth.arsnouveau.api.registry.GlyphRegistry;
+import com.hollingsworth.arsnouveau.api.registry.RitualRegistry;
+import com.hollingsworth.arsnouveau.api.ritual.AbstractRitual;
 import com.hollingsworth.arsnouveau.api.spell.AbstractSpellPart;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.PackOutput;
@@ -30,6 +32,15 @@ public class LangDatagen extends LanguageProvider {
             }
             add(spellPart.getLocalizationKey(), spellPart.getName());
             add(ArsSable.MODID + ".glyph_desc." + registryName.getPath(), spellPart.getBookDescription());
+        }
+
+        for (AbstractRitual ritual : RitualRegistry.getRitualMap().values()) {
+            ResourceLocation registryName = ritual.getRegistryName();
+            if (!registryName.getNamespace().equals(ArsSable.MODID)) {
+                continue;
+            }
+            add("item." + ArsSable.MODID + "." + registryName.getPath(), ritual.getLangName());
+            add(ritual.getDescriptionKey(), ritual.getLangDescription());
         }
 
         addItem(ModBlockRegistry.MINIATURE_SUBLEVEL, "Miniature Sublevel");
