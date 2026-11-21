@@ -146,7 +146,7 @@ public class TrackedBlockEntityPosData extends SavedData {
                 .collect(Collectors.toSet());
     }
 
-    public void handleBlockMoved(ServerLevel level, BlockPos oldPos, BlockPos newPos) {
+    public void moveBlockEntity(BlockPos oldPos, BlockPos newPos) {
         blockEntityPosIndex.moveAll(oldPos, newPos, id -> {
             if (!oldPos.equals(blockEntityPosById.get(id))) {
                 return false;
@@ -154,7 +154,9 @@ public class TrackedBlockEntityPosData extends SavedData {
             blockEntityPosById.put(id, newPos);
             return true;
         });
+    }
 
+    public void moveTrackedPosition(ServerLevel level, BlockPos oldPos, BlockPos newPos) {
         trackedPositionToEntries.moveAll(oldPos, newPos, affectedId -> {
             HashSet<BlockPos> positions = trackedPositions.get(affectedId);
             if (positions == null || !positions.remove(oldPos)) {

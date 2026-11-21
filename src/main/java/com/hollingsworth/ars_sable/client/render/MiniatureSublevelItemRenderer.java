@@ -7,6 +7,8 @@ import com.hollingsworth.ars_sable.network.PacketRequestMiniatureSublevel;
 import com.hollingsworth.arsnouveau.client.renderer.tile.PlanariumRenderer;
 import com.hollingsworth.arsnouveau.common.block.tile.PlanariumTile;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
+import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import net.minecraft.client.Minecraft;
@@ -32,6 +34,7 @@ import org.joml.Matrix4f;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -52,7 +55,11 @@ public class MiniatureSublevelItemRenderer extends BlockEntityWithoutLevelRender
         PlanariumRenderer.StructureRenderData data = new PlanariumRenderer.StructureRenderData(template, 0);
         PlanariumRenderer.generateRender(data, data.fakeRenderingWorld, BlockPos.ZERO, Vec3.ZERO);
         // Not needed for item render
-        PlanariumRenderer.clearByteBuffers(data);
+        data.builders.values().forEach(ByteBufferBuilder::close);
+        data.bufferBuilders.clear();
+        data.sortStates.clear();
+        data.meshDatas.values().stream().filter(Objects::nonNull).forEach(MeshData::close);
+        data.meshDatas.clear();
         RENDERS.put(id, data);
     }
 

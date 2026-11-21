@@ -2,7 +2,7 @@ package com.hollingsworth.ars_sable.mixin.storage;
 
 import com.hollingsworth.ars_sable.common.TrackedBlockEntityPosData;
 import com.hollingsworth.ars_sable.common.sable.TrackedWorldPositionBlockEntity;
-import com.hollingsworth.arsnouveau.common.block.tile.StorageLecternTile;
+import com.hollingsworth.arsnouveau.common.block.tile.CraftingLecternTile;
 import com.hollingsworth.arsnouveau.common.entity.goal.bookwyrm.TransferTask;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -27,10 +27,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.*;
 
-@Mixin(StorageLecternTile.class)
-public abstract class StorageLecternTileMixin extends BlockEntity implements TrackedWorldPositionBlockEntity {
+@Mixin(CraftingLecternTile.class)
+public abstract class CraftingLecternTileMixin extends BlockEntity implements TrackedWorldPositionBlockEntity {
     @Shadow
-    public List<StorageLecternTile.HandlerPos> handlerPosList;
+    public List<CraftingLecternTile.HandlerPos> handlerPosList;
     @Shadow
     public BlockPos mainLecternPos;
     @Shadow
@@ -40,7 +40,7 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
     @Shadow
     public Queue<TransferTask> transferTasks;
 
-    protected StorageLecternTileMixin(BlockEntityType<?> type, BlockPos pos, BlockState blockState) {
+    protected CraftingLecternTileMixin(BlockEntityType<?> type, BlockPos pos, BlockState blockState) {
         super(type, pos, blockState);
     }
 
@@ -75,10 +75,8 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
     }
 
     @Inject(method = "addHandlerPos", at = @At("TAIL"))
-    private void ars_sable$syncAddedHandler(StorageLecternTile tile, BlockPos pos, CallbackInfo ci) {
-        if (tile instanceof TrackedWorldPositionBlockEntity trackedBlockEntity && tile.getLevel() instanceof ServerLevel serverLevel) {
-            ars_sable$syncTrackedBlockEntityPositions(serverLevel, trackedBlockEntity, tile.getBlockPos());
-        }
+    private void ars_sable$syncAddedHandler(BlockPos pos, CallbackInfo ci) {
+        ars_sable$syncTrackedPositions();
     }
 
     @Override
@@ -92,8 +90,8 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
         if (mainLecternPos != null) {
             trackedPositions.add(mainLecternPos);
         }
-        for (StorageLecternTile.HandlerPos handlerPos : handlerPosList) {
-            trackedPositions.add(handlerPos.pos());
+        for (CraftingLecternTile.HandlerPos handlerPos : handlerPosList) {
+            trackedPositions.add(handlerPos.pos);
         }
         return trackedPositions;
     }
@@ -106,15 +104,15 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
             changed = true;
         }
 
-        List<StorageLecternTile.HandlerPos> updatedHandlers = new ArrayList<>(handlerPosList.size());
-        for (StorageLecternTile.HandlerPos handlerPos : handlerPosList) {
-            BlockPos handlerPosValue = handlerPos.pos();
+        List<CraftingLecternTile.HandlerPos> updatedHandlers = new ArrayList<>(handlerPosList.size());
+        for (CraftingLecternTile.HandlerPos handlerPos : handlerPosList) {
+            BlockPos handlerPosValue = handlerPos.pos;
             if (Objects.equals(handlerPosValue, oldPos)) {
                 handlerPos.pos = newPos;
                 handlerPos.handler = ars_sable$createCapabilityCache(newPos);
                 changed = true;
             }
-            if (updatedHandlers.stream().noneMatch(existing -> existing.pos().equals(handlerPos.pos()))) {
+            if (updatedHandlers.stream().noneMatch(existing -> existing.pos.equals(handlerPos.pos))) {
                 updatedHandlers.add(handlerPos);
             }
         }
@@ -154,41 +152,33 @@ public abstract class StorageLecternTileMixin extends BlockEntity implements Tra
         if (mainLecternPos != null) {
             expectedTargets.remove(mainLecternPos);
         }
-        handlerPosList.forEach(handlerPos -> expectedTargets.remove(handlerPos.pos()));
+        handlerPosList.forEach(handlerPos -> expectedTargets.remove(handlerPos.pos));
 
         for (BlockPos pos : expectedTargets) {
             if (pos.equals(this.getBlockPos())) {
                 continue;
             }
-            if (handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(pos))) {
-                handlerPosList.add(new StorageLecternTile.HandlerPos(pos, ars_sable$createCapabilityCache(pos)));
+            if (handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(pos))) {
+                handlerPosList.add(new CraftingLecternTile.HandlerPos(pos, ars_sable$createCapabilityCache(pos)));
             }
         }
 
-        handlerPosList.removeIf(handlerPos -> handlerPos.pos().equals(this.getBlockPos()));
+        handlerPosList.removeIf(handlerPos -> handlerPos.pos.equals(this.getBlockPos()));
         updateItems = true;
         invalidateNextTick = true;
     }
 
     @Unique
     private void ars_sable$syncTrackedPositions() {
-        if (this.getLevel() instanceof ServerLevel serverLevel) {
-            ars_sable$syncTrackedBlockEntityPositions(serverLevel, this, this.getBlockPos());
+        if (!(this.getLevel() instanceof ServerLevel serverLevel)) {
+            return;
         }
-    }
-
-    @Unique
-    private static void ars_sable$syncTrackedBlockEntityPositions(ServerLevel serverLevel, TrackedWorldPositionBlockEntity trackedBlockEntity, BlockPos blockEntityPos) {
-        Collection<BlockPos> trackedPositions = trackedBlockEntity.ars_sable$getTrackedPositions();
+        Collection<BlockPos> trackedPositions = ars_sable$getTrackedPositions();
         TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(serverLevel);
         if (trackedPositions.isEmpty()) {
-            data.removeIfAtPosition(trackedBlockEntity.ars_sable$getTrackingId(), blockEntityPos);
+            data.removeIfAtPosition(ars_sable$trackingId, this.getBlockPos());
         } else {
-            data.sync(trackedBlockEntity.ars_sable$getTrackingId(), blockEntityPos, trackedPositions);
+            data.sync(ars_sable$trackingId, this.getBlockPos(), trackedPositions);
         }
     }
 }
-
-
-
-

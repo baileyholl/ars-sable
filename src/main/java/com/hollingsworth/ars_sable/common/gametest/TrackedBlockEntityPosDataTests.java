@@ -3,7 +3,7 @@ package com.hollingsworth.ars_sable.common.gametest;
 import com.hollingsworth.ars_sable.ArsSable;
 import com.hollingsworth.ars_sable.common.TrackedBlockEntityPosData;
 import com.hollingsworth.ars_sable.common.sable.TrackedWorldPositionBlockEntity;
-import com.hollingsworth.arsnouveau.common.block.tile.StorageLecternTile;
+import com.hollingsworth.arsnouveau.common.block.tile.CraftingLecternTile;
 import com.hollingsworth.arsnouveau.setup.registry.BlockRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
@@ -49,8 +49,8 @@ public class TrackedBlockEntityPosDataTests {
 
         data.sync(id, ownerPos, List.of(oldTarget, keptTarget));
         data.setTrackedPositions(id, List.of(keptTarget, newTarget));
-        data.handleBlockMoved(level, oldTarget, movedOldTarget);
-        data.handleBlockMoved(level, keptTarget, movedKeptTarget);
+        data.moveTrackedPosition(level, oldTarget, movedOldTarget);
+        data.moveTrackedPosition(level, keptTarget, movedKeptTarget);
 
         Set<BlockPos> positions = data.getTrackedPositions(id);
         helper.assertTrue(!positions.contains(oldTarget), "Old target remained tracked");
@@ -94,8 +94,8 @@ public class TrackedBlockEntityPosDataTests {
 
         data.sync(ownerId, oldOwnerPos, List.of());
         data.sync(trackerId, trackerPos, List.of(oldTarget));
-        data.handleBlockMoved(level, oldOwnerPos, newOwnerPos);
-        data.handleBlockMoved(level, oldTarget, newTarget);
+        data.moveBlockEntity(oldOwnerPos, newOwnerPos);
+        data.moveTrackedPosition(level, oldTarget, newTarget);
 
         helper.assertTrue(newOwnerPos.equals(data.getBlockEntityPos(ownerId)), "Moved owner entry was not updated");
         helper.assertTrue(data.getTrackedPositions(trackerId).equals(Set.of(newTarget)), "Moved tracked position was not updated");
@@ -111,15 +111,15 @@ public class TrackedBlockEntityPosDataTests {
         BlockPos newTarget = helper.absolutePos(new BlockPos(3, 1, 5));
 
         helper.setBlock(ownerPos, BlockRegistry.CRAFTING_LECTERN.get().defaultBlockState());
-        StorageLecternTile owner = helper.getBlockEntity(ownerPos);
-        owner.handlerPosList.add(new StorageLecternTile.HandlerPos(oldTarget, null));
+        CraftingLecternTile owner = helper.getBlockEntity(ownerPos);
+        owner.handlerPosList.add(new CraftingLecternTile.HandlerPos(oldTarget, null));
 
         UUID id = ((TrackedWorldPositionBlockEntity) owner).ars_sable$getTrackingId();
         data.sync(id, owner.getBlockPos(), List.of(oldTarget));
-        data.handleBlockMoved(level, oldTarget, newTarget);
+        data.moveTrackedPosition(level, oldTarget, newTarget);
 
-        helper.assertTrue(owner.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTarget)), "Loaded block entity was not updated");
-        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTarget)), "Loaded block entity kept stale target");
+        helper.assertTrue(owner.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos.equals(newTarget)), "Loaded block entity was not updated");
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(oldTarget)), "Loaded block entity kept stale target");
         helper.succeed();
     }
 }

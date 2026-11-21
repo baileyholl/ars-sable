@@ -1,3 +1,3 @@
 # Changelog
 
-Adds miniaturize glyph for converting sublevels to items
+Makes compatible with latest ars nouveau

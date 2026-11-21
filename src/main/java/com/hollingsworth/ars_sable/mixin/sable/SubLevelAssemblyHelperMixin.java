@@ -13,6 +13,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(SubLevelAssemblyHelper.class)
 public class SubLevelAssemblyHelperMixin {
+    // Owners move before the old blocks are removed so their removal does not drop the tracking entry
+    @Inject(method = "moveBlocks", at = @At("HEAD"))
+    private static void ars_sable$trackMovedBlockEntities(ServerLevel level, SubLevelAssemblyHelper.AssemblyTransform transform, Iterable<BlockPos> blocks, CallbackInfo ci) {
+        TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
+        for (BlockPos oldPos : blocks) {
+            data.moveBlockEntity(oldPos.immutable(), transform.apply(oldPos).immutable());
+        }
+    }
+
     @Inject(method = "moveBlocks", at = @At("TAIL"))
     private static void ars_sable$trackMovedBlockPositions(ServerLevel level, SubLevelAssemblyHelper.AssemblyTransform transform, Iterable<BlockPos> blocks, CallbackInfo ci) {
         TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
@@ -22,7 +31,7 @@ public class SubLevelAssemblyHelperMixin {
             oldPos = oldPos.immutable();
             BlockPos newPos = transform.apply(oldPos).immutable();
             if (!newPos.equals(oldPos)) {
-                data.handleBlockMoved(level, oldPos, newPos);
+                data.moveTrackedPosition(level, oldPos, newPos);
                 warpData.handleBlockMoved(level, oldPos, newPos);
                 sublevelPosData.handleBlockMoved(level, oldPos, newPos);
             }

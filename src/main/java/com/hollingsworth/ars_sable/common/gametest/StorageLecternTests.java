@@ -4,7 +4,7 @@ import com.hollingsworth.ars_sable.ArsSable;
 import com.hollingsworth.ars_sable.common.TrackedBlockEntityPosData;
 import com.hollingsworth.ars_sable.common.sable.TrackedWorldPositionBlockEntity;
 import com.hollingsworth.arsnouveau.api.ANFakePlayer;
-import com.hollingsworth.arsnouveau.common.block.tile.StorageLecternTile;
+import com.hollingsworth.arsnouveau.common.block.tile.CraftingLecternTile;
 import com.hollingsworth.arsnouveau.common.entity.goal.bookwyrm.TransferTask;
 import com.hollingsworth.arsnouveau.setup.registry.BlockRegistry;
 import dev.ryanhcode.sable.api.SubLevelAssemblyHelper;
@@ -36,14 +36,14 @@ public class StorageLecternTests {
         BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
         BlockPos newTargetWorld = helper.absolutePos(newTarget);
 
-        StorageLecternTile owner = placeLectern(helper, ownerPos);
+        CraftingLecternTile owner = placeLectern(helper, ownerPos);
         helper.setBlock(oldTarget, Blocks.CHEST);
-        owner.addHandlerPos(owner, oldTargetWorld);
+        owner.addHandlerPos(oldTargetWorld);
 
         SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
 
-        helper.assertTrue(owner.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Expected handler to move to " + newTargetWorld);
-        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Stale handler target was kept at " + oldTargetWorld);
+        helper.assertTrue(owner.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos.equals(newTargetWorld)), "Expected handler to move to " + newTargetWorld);
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(oldTargetWorld)), "Stale handler target was kept at " + oldTargetWorld);
         helper.succeed();
     }
 
@@ -57,18 +57,18 @@ public class StorageLecternTests {
         BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
         BlockPos newTargetWorld = helper.absolutePos(newTarget);
 
-        StorageLecternTile ownerA = placeLectern(helper, ownerAPos);
-        StorageLecternTile ownerB = placeLectern(helper, ownerBPos);
+        CraftingLecternTile ownerA = placeLectern(helper, ownerAPos);
+        CraftingLecternTile ownerB = placeLectern(helper, ownerBPos);
         helper.setBlock(oldTarget, Blocks.CHEST);
-        ownerA.addHandlerPos(ownerA, oldTargetWorld);
-        ownerB.addHandlerPos(ownerB, oldTargetWorld);
+        ownerA.addHandlerPos(oldTargetWorld);
+        ownerB.addHandlerPos(oldTargetWorld);
 
         SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
 
-        helper.assertTrue(ownerA.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "First lectern did not move shared target");
-        helper.assertTrue(ownerB.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Second lectern did not move shared target");
-        helper.assertTrue(ownerA.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "First lectern kept stale shared target");
-        helper.assertTrue(ownerB.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Second lectern kept stale shared target");
+        helper.assertTrue(ownerA.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos.equals(newTargetWorld)), "First lectern did not move shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos.equals(newTargetWorld)), "Second lectern did not move shared target");
+        helper.assertTrue(ownerA.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(oldTargetWorld)), "First lectern kept stale shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(oldTargetWorld)), "Second lectern kept stale shared target");
         helper.succeed();
     }
 
@@ -82,11 +82,11 @@ public class StorageLecternTests {
         BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
         BlockPos newTargetWorld = helper.absolutePos(newTarget);
 
-        StorageLecternTile ownerA = placeLectern(helper, ownerAPos);
-        StorageLecternTile ownerB = placeLectern(helper, ownerBPos);
+        CraftingLecternTile ownerA = placeLectern(helper, ownerAPos);
+        CraftingLecternTile ownerB = placeLectern(helper, ownerBPos);
         helper.setBlock(oldTarget, Blocks.CHEST);
-        ownerA.addHandlerPos(ownerA, oldTargetWorld);
-        ownerB.addHandlerPos(ownerB, oldTargetWorld);
+        ownerA.addHandlerPos(oldTargetWorld);
+        ownerB.addHandlerPos(oldTargetWorld);
 
         TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
         TrackedWorldPositionBlockEntity trackedA = (TrackedWorldPositionBlockEntity) ownerA;
@@ -98,9 +98,9 @@ public class StorageLecternTests {
 
         SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
 
-        helper.assertTrue(ownerA.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Wiped lectern tracked moved shared target");
-        helper.assertTrue(ownerB.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Other lectern did not move shared target");
-        helper.assertTrue(ownerB.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Other lectern kept stale shared target");
+        helper.assertTrue(ownerA.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(newTargetWorld)), "Wiped lectern tracked moved shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos.equals(newTargetWorld)), "Other lectern did not move shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(oldTargetWorld)), "Other lectern kept stale shared target");
         helper.succeed();
     }
 
@@ -114,11 +114,11 @@ public class StorageLecternTests {
         BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
         BlockPos newTargetWorld = helper.absolutePos(newTarget);
 
-        StorageLecternTile ownerA = placeLectern(helper, ownerAPos);
-        StorageLecternTile ownerB = placeLectern(helper, ownerBPos);
+        CraftingLecternTile ownerA = placeLectern(helper, ownerAPos);
+        CraftingLecternTile ownerB = placeLectern(helper, ownerBPos);
         helper.setBlock(oldTarget, Blocks.CHEST);
-        ownerA.addHandlerPos(ownerA, oldTargetWorld);
-        ownerB.addHandlerPos(ownerB, oldTargetWorld);
+        ownerA.addHandlerPos(oldTargetWorld);
+        ownerB.addHandlerPos(oldTargetWorld);
 
         TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
         TrackedWorldPositionBlockEntity trackedA = (TrackedWorldPositionBlockEntity) ownerA;
@@ -131,8 +131,8 @@ public class StorageLecternTests {
 
         SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
 
-        helper.assertTrue(ownerB.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Other lectern did not move shared target");
-        helper.assertTrue(ownerB.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Other lectern kept stale shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().anyMatch(handlerPos -> handlerPos.pos.equals(newTargetWorld)), "Other lectern did not move shared target");
+        helper.assertTrue(ownerB.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(oldTargetWorld)), "Other lectern kept stale shared target");
         helper.succeed();
     }
 
@@ -143,9 +143,9 @@ public class StorageLecternTests {
         BlockPos target = new BlockPos(4, 1, 7);
         BlockPos targetWorld = helper.absolutePos(target);
 
-        StorageLecternTile owner = placeLectern(helper, ownerPos);
+        CraftingLecternTile owner = placeLectern(helper, ownerPos);
         helper.setBlock(target, Blocks.CHEST);
-        owner.addHandlerPos(owner, targetWorld);
+        owner.addHandlerPos(targetWorld);
 
         TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
         TrackedWorldPositionBlockEntity trackedOwner = (TrackedWorldPositionBlockEntity) owner;
@@ -168,22 +168,22 @@ public class StorageLecternTests {
         BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
         BlockPos newTargetWorld = helper.absolutePos(newTarget);
 
-        StorageLecternTile owner = placeLectern(helper, ownerPos);
+        CraftingLecternTile owner = placeLectern(helper, ownerPos);
         helper.setBlock(oldTarget, Blocks.CHEST);
-        owner.addHandlerPos(owner, oldTargetWorld);
+        owner.addHandlerPos(oldTargetWorld);
 
         TrackedBlockEntityPosData data = TrackedBlockEntityPosData.from(level);
         TrackedWorldPositionBlockEntity trackedOwner = (TrackedWorldPositionBlockEntity) owner;
         helper.assertTrue(data.getTrackedPositions(trackedOwner.ars_sable$getTrackingId()).contains(oldTargetWorld), "Expected tracked connection before wipe");
 
         owner.onFinishedConnectionLast(oldTargetWorld, Direction.UP, null, ANFakePlayer.getPlayer(level));
-        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldTargetWorld)), "Dominion wand wipe kept handler target");
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(oldTargetWorld)), "Dominion wand wipe kept handler target");
         helper.assertTrue(data.getBlockEntityPos(trackedOwner.ars_sable$getTrackingId()) == null, "Wiped lectern kept tracked entry");
         helper.assertTrue(data.getTrackedPositions(trackedOwner.ars_sable$getTrackingId()).isEmpty(), "Wiped lectern kept tracked positions");
 
         SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldTargetWorld, newTargetWorld, 0, Rotation.NONE, level), List.of(oldTargetWorld));
 
-        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(newTargetWorld)), "Former target was tracked after wipe");
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(newTargetWorld)), "Former target was tracked after wipe");
         helper.assertTrue(data.getBlockEntityPos(trackedOwner.ars_sable$getTrackingId()) == null, "Former target move recreated tracked entry");
         helper.succeed();
     }
@@ -197,9 +197,9 @@ public class StorageLecternTests {
         BlockPos oldTargetWorld = helper.absolutePos(oldTarget);
         BlockPos newTargetWorld = helper.absolutePos(newTarget);
 
-        StorageLecternTile owner = placeLectern(helper, ownerPos);
+        CraftingLecternTile owner = placeLectern(helper, ownerPos);
         helper.setBlock(oldTarget, Blocks.CHEST);
-        owner.addHandlerPos(owner, oldTargetWorld);
+        owner.addHandlerPos(oldTargetWorld);
         owner.transferTasks.add(new TransferTask(oldTargetWorld, owner.getBlockPos(), ItemStack.EMPTY, level.getGameTime()));
         owner.transferTasks.add(new TransferTask(owner.getBlockPos(), oldTargetWorld, ItemStack.EMPTY, level.getGameTime()));
 
@@ -218,7 +218,7 @@ public class StorageLecternTests {
         BlockPos oldMainWorld = helper.absolutePos(oldMain);
         BlockPos newMainWorld = helper.absolutePos(newMain);
 
-        StorageLecternTile owner = placeLectern(helper, ownerPos);
+        CraftingLecternTile owner = placeLectern(helper, ownerPos);
         placeLectern(helper, oldMain);
         owner.mainLecternPos = oldMainWorld;
         owner.onLoad();
@@ -226,14 +226,14 @@ public class StorageLecternTests {
         SubLevelAssemblyHelper.moveBlocks(level, new SubLevelAssemblyHelper.AssemblyTransform(oldMainWorld, newMainWorld, 0, Rotation.NONE, level), List.of(oldMainWorld));
 
         helper.assertTrue(newMainWorld.equals(owner.mainLecternPos), "Expected main lectern position to move to " + newMainWorld + ", actual=" + owner.mainLecternPos);
-        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(newMainWorld)), "Moved main lectern was added as a handler at " + newMainWorld);
-        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos().equals(oldMainWorld)), "Stale main lectern position was kept as a handler at " + oldMainWorld);
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(newMainWorld)), "Moved main lectern was added as a handler at " + newMainWorld);
+        helper.assertTrue(owner.handlerPosList.stream().noneMatch(handlerPos -> handlerPos.pos.equals(oldMainWorld)), "Stale main lectern position was kept as a handler at " + oldMainWorld);
         helper.succeed();
     }
 
-    private static StorageLecternTile placeLectern(GameTestHelper helper, BlockPos pos) {
+    private static CraftingLecternTile placeLectern(GameTestHelper helper, BlockPos pos) {
         helper.setBlock(pos, BlockRegistry.CRAFTING_LECTERN.get().defaultBlockState());
-        if (helper.getBlockEntity(pos) instanceof StorageLecternTile lectern) {
+        if (helper.getBlockEntity(pos) instanceof CraftingLecternTile lectern) {
             return lectern;
         }
         helper.fail("Expected storage lectern at " + pos);
