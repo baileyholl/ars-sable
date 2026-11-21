@@ -26,6 +26,7 @@
     "sable.RapierPhysicsPipelineMixin",
     "sable.SubLevelAssemblyHelperMixin",
     "source_jar.SourceJarMixin",
+    "storage.CraftingLecternBlockMixin",
     "storage.CraftingLecternTileMixin",
     "turret.RotatingTurretTileMixin",
     "util.BlockPosUtilMixin",

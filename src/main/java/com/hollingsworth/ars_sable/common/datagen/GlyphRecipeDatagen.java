@@ -1,9 +1,11 @@
 package com.hollingsworth.ars_sable.common.datagen;
 
 import com.hollingsworth.ars_sable.ArsSable;
+import com.hollingsworth.ars_sable.common.spell.AugmentSublevel;
 import com.hollingsworth.ars_sable.common.spell.EffectMiniaturize;
 import com.hollingsworth.arsnouveau.common.crafting.recipes.GlyphRecipe;
 import com.hollingsworth.arsnouveau.common.datagen.GlyphRecipeProvider;
+import com.hollingsworth.arsnouveau.setup.registry.ItemsRegistry;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.CachedOutput;
@@ -26,7 +28,7 @@ public class GlyphRecipeDatagen extends GlyphRecipeProvider {
     @Override
     public void collectJsons(CachedOutput cache) {
         add(get(EffectMiniaturize.INSTANCE).withItem(Items.PISTON, 8));
-
+        add(get(AugmentSublevel.INSTANCE).withItem(ItemsRegistry.MANIPULATION_ESSENCE));
         for (GlyphRecipe recipe : recipes) {
             String path = BuiltInRegistries.ITEM.getKey(recipe.output.getItem()).getPath();
             saveStable(cache, Recipe.CODEC.encodeStart(JsonOps.INSTANCE, recipe).getOrThrow(), output.resolve("data/" + ArsSable.MODID + "/recipe/" + path + ".json"));
