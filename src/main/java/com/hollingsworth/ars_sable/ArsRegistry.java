@@ -1,9 +1,12 @@
 package com.hollingsworth.ars_sable;
 
 import com.hollingsworth.ars_sable.common.registry.SublevelEffectRegistry;
+import com.hollingsworth.ars_sable.common.ritual.RitualLevitation;
 import com.hollingsworth.ars_sable.common.spell.*;
 import com.hollingsworth.arsnouveau.api.registry.GlyphRegistry;
+import com.hollingsworth.arsnouveau.api.registry.RitualRegistry;
 import com.hollingsworth.arsnouveau.common.spell.effect.*;
+import net.neoforged.fml.loading.FMLEnvironment;
 
 public class ArsRegistry {
 
@@ -16,5 +19,8 @@ public class ArsRegistry {
         SublevelEffectRegistry.register(EffectPull.INSTANCE, new PullSublevelEffect());
         SublevelEffectRegistry.register(EffectGravity.INSTANCE, new GravitySublevelEffect());
         SublevelEffectRegistry.register(EffectRotate.INSTANCE, new RotateSublevelEffect());
+        if (!FMLEnvironment.production) {
+            RitualRegistry.registerRitual(new RitualLevitation());
+        }
     }
 }
