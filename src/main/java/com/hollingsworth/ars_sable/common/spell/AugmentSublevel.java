@@ -8,7 +8,7 @@ public class AugmentSublevel extends AbstractAugment {
     public static AugmentSublevel INSTANCE = new AugmentSublevel();
 
     private AugmentSublevel() {
-        super(ArsSable.prefix("glyph_sublevel"), "Target Sublevel");
+        super(ArsSable.prefix("glyph_sublevel"), "Target Simulated Level");
     }
 
     @Override
@@ -23,6 +23,6 @@ public class AugmentSublevel extends AbstractAugment {
 
     @Override
     public String getBookDescription() {
-        return "";
+        return "Allows glyphs to target the simulated level instead of the block or entity that was hit. This allows for other block-moving glyphs like Pull or Knockback to move entire the simulated level around.";
     }
 }
